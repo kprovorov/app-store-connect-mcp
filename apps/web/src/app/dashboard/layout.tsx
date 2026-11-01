@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               hidePersonal
               afterSelectOrganizationUrl="/dashboard"
               afterCreateOrganizationUrl="/dashboard"
-              afterLeaveOrganizationUrl="/choose-organization"
+              afterLeaveOrganizationUrl="/dashboard"
             />
           </div>
           <UserButton />
