@@ -9,7 +9,14 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["PORT", "WEB_ORIGIN", "CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"]
+      "passThroughEnv": [
+        "PORT",
+        "WEB_ORIGIN",
+        "CLERK_PUBLISHABLE_KEY",
+        "CLERK_SECRET_KEY",
+        "MCP_RESOURCE_URL",
+        "MCP_DEV_ACCEPT_SESSION_TOKENS"
+      ]
     },
     "typecheck": {},
     "lint": {},
