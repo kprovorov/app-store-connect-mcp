@@ -217,9 +217,6 @@ importers:
       '@clerk/backend':
         specifier: ^3.26.5
         version: 3.26.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@clerk/hono':
-        specifier: ^0.1.96
-        version: 0.1.96(hono@4.13.14)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.14)
@@ -599,12 +596,6 @@ packages:
   '@clerk/backend@3.26.5':
     resolution: {integrity: sha512-znLhEv811EFbYvPjFQSGVFCaCQq6j6nz0H7UqvKXONVAoz0T9T9CVjz1j7Ii9EbjFyQikZ1uxV84WfDiDNiTeQ==}
     engines: {node: '>=20.9.0'}
-
-  '@clerk/hono@0.1.96':
-    resolution: {integrity: sha512-+VO09HvJroJyQHb8Whw5BNLbTzmX4xcRvtZdOE6DPBny7y8z83UsGQ/IQtR4xO4Gx5k5hIku+k0Z5WeFBx27Dg==}
-    engines: {node: '>=20.9.0'}
-    peerDependencies:
-      hono: '>=4'
 
   '@clerk/nextjs@7.9.23':
     resolution: {integrity: sha512-ilAL/4kKa85DZ28XPPqFIiDcxxZm8+3gA2zvRXjpLzcfRt/X1BzHalgpStv+QbwLLcLL/M5ftpvRlYMS787pTw==}
@@ -5628,15 +5619,6 @@ snapshots:
     dependencies:
       '@clerk/shared': 4.43.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       standardwebhooks: 1.1.1
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@clerk/hono@0.1.96(hono@4.13.14)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@clerk/backend': 3.26.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@clerk/shared': 4.43.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      hono: 4.13.14
     transitivePeerDependencies:
       - react
       - react-dom
