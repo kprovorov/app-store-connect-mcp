@@ -1,0 +1,28 @@
+{
+  "name": "@asc-mcp/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "supabase migration up --workdir ../.."
+  },
+  "dependencies": {
+    "@asc-mcp/crypto": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "effect": "catalog:",
+    "postgres": "catalog:"
+  },
+  "devDependencies": {
+    "@asc-mcp/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "drizzle-kit": "catalog:"
+  }
+}

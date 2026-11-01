@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["ENCRYPTION_KEYS"],
+  "globalEnv": ["DATABASE_URL", "ENCRYPTION_KEYS"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793558940534,
+      "tag": "20261101184900_app_rls_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793558942504,
+      "tag": "20261101184902_asc_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793558944461,
+      "tag": "20261101184904_asc_connections_grants",
+      "breakpoints": true
+    }
+  ]
+}

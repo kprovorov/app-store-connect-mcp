@@ -32,3 +32,15 @@ pnpm test
 To run one app, filter by package name, for example `pnpm dev --filter=@asc-mcp/api`.
 
 To start the local database, run `supabase start`. Copy `.env.example` to `.env` and fill in the values.
+
+## Database migrations
+
+`packages/db/src/schema.ts` defines the tables and RLS policies. drizzle-kit writes migrations into `supabase/migrations`, and the Supabase CLI applies them. Do not use `drizzle-kit migrate`.
+
+```sh
+pnpm --filter @asc-mcp/db db:generate   # after editing schema.ts
+pnpm --filter @asc-mcp/db db:migrate    # supabase migration up on the running local stack
+supabase db reset                       # or rebuild the local database from every migration
+```
+
+drizzle-kit emits no functions or grants. Those live in hand-written migrations made with `pnpm --filter @asc-mcp/db exec drizzle-kit generate --custom --name <name>`. The `app.*` claim helpers must exist before any policy that calls them, so their migration sorts first.
