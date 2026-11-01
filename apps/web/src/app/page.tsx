@@ -49,7 +49,7 @@ function HeaderActions() {
     <Suspense fallback={<Skeleton className="h-8 w-28" />}>
       <Show when="signed-out">
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="hidden sm:inline-flex">
             <Link href="/sign-in">Sign in</Link>
           </Button>
           <Button asChild>
