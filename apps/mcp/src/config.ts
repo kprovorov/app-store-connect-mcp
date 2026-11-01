@@ -15,14 +15,11 @@ const PublishableKey = Schema.String.pipe(
   Schema.check(Schema.makeFilter((key: string) => clerkIssuer(key) !== undefined || "not a Clerk publishable key")),
 );
 
-/** Parsed once at startup. `DATABASE_URL` and `ENCRYPTION_KEYS` belong to the db and crypto layers. */
 export const McpConfig = Config.all({
   port: Config.Port("PORT").pipe(Config.withDefault(8788)),
-  /** The public URL agents connect to, such as `https://mcp.example.com/mcp`. Also the OAuth resource. */
   resourceUrl: Config.URL("MCP_RESOURCE_URL").pipe(Config.map((url) => url.href)),
   webOrigin: Config.URL("WEB_ORIGIN").pipe(Config.map((url) => url.origin)),
   clerkSecretKey: Config.Redacted("CLERK_SECRET_KEY"),
   clerkPublishableKey: Config.schema(PublishableKey, "CLERK_PUBLISHABLE_KEY"),
-  /** Dev only: also accept Clerk session tokens, so the server can be tested without an OAuth client. */
   acceptSessionTokens: Config.Boolean("MCP_DEV_ACCEPT_SESSION_TOKENS").pipe(Config.withDefault(false)),
 });

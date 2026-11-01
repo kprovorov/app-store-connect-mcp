@@ -26,7 +26,6 @@ if (config.acceptSessionTokens) console.warn("mcp: MCP_DEV_ACCEPT_SESSION_TOKENS
 
 const app = makeApp({
   resourceUrl: config.resourceUrl,
-  // Config validated the key, so the issuer is defined.
   issuer: clerkIssuer(config.clerkPublishableKey)!,
   webOrigin: config.webOrigin,
   runtime,

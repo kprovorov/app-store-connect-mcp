@@ -10,7 +10,6 @@ export interface Org {
   readonly name: string;
 }
 
-/** Who is calling a tool. `orgs` names the orgs in `claims.orgIds` for messages to the agent. */
 export interface Caller {
   readonly claims: MemberClaims;
   readonly orgs: ReadonlyArray<Org>;
@@ -21,7 +20,6 @@ export type AuthOutcome =
   | { readonly kind: "missing" }
   | { readonly kind: "invalid" };
 
-/** Clerk in production, a fake in tests. */
 export type Authenticate = (request: Request) => Promise<AuthOutcome>;
 
 export const callerOf = (authInfo: AuthInfo | undefined): Caller | undefined =>

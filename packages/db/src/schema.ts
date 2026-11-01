@@ -6,8 +6,7 @@ import type { ConnectionId, OrgId, UserId } from "./ids";
 
 export const keyKind = pgEnum("asc_key_kind", ["team", "individual"]);
 
-// app.* helpers live in a custom migration. Wrapping them in a subselect lets Postgres
-// evaluate them once per statement instead of once per row.
+// Wrapping app.* helpers in a subselect lets Postgres evaluate them once per statement instead of once per row.
 const orgIds = sql`(select app.org_ids())`;
 const adminOrgId = sql`(select app.admin_org_id())`;
 

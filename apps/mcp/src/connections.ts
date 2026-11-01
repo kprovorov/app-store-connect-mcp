@@ -9,7 +9,6 @@ export type ConnectionChoice =
   | { readonly ok: false; readonly reason: "ambiguous"; readonly candidates: ReadonlyArray<Connection> }
   | { readonly ok: false; readonly reason: "not_found"; readonly connectionId: string };
 
-/** Picks the connection a tool call runs against. One visible connection is the default. */
 export const resolveConnection = (
   connections: ReadonlyArray<Connection>,
   connectionId?: string,
@@ -31,7 +30,6 @@ export const storedCredentials = (connection: Connection) =>
       connection.encryptedPrivateKey,
       connectionSecretAad(connection.orgId, connection.id),
     );
-    // The key parsed when it was added, so failing now means the row is corrupt.
     return yield* Effect.orDie(
       parseCredentials({
         kind: connection.key.kind,

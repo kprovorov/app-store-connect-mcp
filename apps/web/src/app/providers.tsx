@@ -7,7 +7,6 @@ import { useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ApiRequestError } from "@/lib/api";
 
-// A 4xx means the request itself is wrong (auth, input, permissions), so repeating it can't help.
 function shouldRetry(failureCount: number, error: Error) {
   if (error instanceof ApiRequestError && error.status >= 400 && error.status < 500) return false;
   return failureCount < 2;

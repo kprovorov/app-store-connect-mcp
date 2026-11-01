@@ -4,9 +4,7 @@ import { type Authenticate, protectedResourceMetadata, unauthorized } from "./au
 import { type ServerDeps, createMcpServer } from "./server";
 
 export interface McpDeps extends ServerDeps {
-  /** Public MCP endpoint URL, such as `https://mcp.example.com/mcp`. Never derived from the request. */
   readonly resourceUrl: string;
-  /** Clerk Frontend API origin, the OAuth authorization server. */
   readonly issuer: string;
   readonly authenticate: Authenticate;
 }

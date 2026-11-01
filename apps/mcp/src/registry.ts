@@ -78,7 +78,6 @@ const connectionMessage = (choice: ConnectionUnavailable["choice"], { caller, we
   }
 };
 
-/** Every way a tool call can fail, as the result the agent reads. */
 const failures: {
   [Tag in ToolFailure["_tag"]]: (failure: Extract<ToolFailure, { _tag: Tag }>, context: CallContext) => CallToolResult;
 } = {
@@ -126,7 +125,6 @@ const failureResult = (failure: ToolFailure, context: CallContext) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-// Per-resource links and link-only relationships are most of a JSON:API body and tell the agent nothing new.
 const compactResource = (resource: unknown) => {
   if (!isRecord(resource)) return resource;
   const { links: _links, relationships, ...rest } = resource;
@@ -138,7 +136,6 @@ const compactResource = (resource: unknown) => {
   return kept.length > 0 ? { ...rest, relationships: Object.fromEntries(kept) } : rest;
 };
 
-/** Keeps `data`, `included`, `links.next`, and `meta.paging`. Bodies that are not JSON:API pass through. */
 export const compactBody = (body: unknown) => {
   if (!isRecord(body) || !("data" in body)) return body;
   const next = isRecord(body.links) ? body.links.next : undefined;

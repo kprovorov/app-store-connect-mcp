@@ -22,7 +22,6 @@ import { type ApiFailure, errorResponse, failureResponse } from "./errors";
 
 export interface ApiDeps {
   readonly webOrigin: string;
-  /** Sets `session` on the context. Clerk in production, a fake in tests. */
   readonly session: MiddlewareHandler<SessionEnv>;
   readonly runtime: ManagedRuntime.ManagedRuntime<Services, unknown>;
 }

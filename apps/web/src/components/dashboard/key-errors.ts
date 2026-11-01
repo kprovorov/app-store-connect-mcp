@@ -25,7 +25,6 @@ export const verifyFailureCopy: Record<VerifyFailureReason, Problem> = {
   },
 };
 
-/** Where a failed "add key" request should show up in the form. */
 export type SubmitProblem = { kind: "field"; field: KeyField; message: string } | ({ kind: "alert" } & Problem);
 
 export function describeCreateError(error: Error): SubmitProblem {

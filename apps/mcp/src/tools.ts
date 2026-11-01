@@ -1,14 +1,9 @@
 import type { AscRequest } from "@asc-mcp/asc";
 import { Schema } from "effect";
 
-/**
- * One App Store Connect tool. The registry adds `connection_id`, picks the connection,
- * signs, calls Apple, and shapes the result, so a tool is only its input and its request.
- */
 export interface AscTool<I> {
   readonly name: string;
   readonly title: string;
-  /** Written for the agent: what comes back, the useful filters, and how to page. */
   readonly description: string;
   readonly input: Schema.Codec<I, unknown>;
   readonly annotations: {
@@ -20,7 +15,6 @@ export interface AscTool<I> {
   readonly toRequest: (input: I) => AscRequest;
 }
 
-// The registry only ever calls toRequest with a value its own input decoded.
 const define = <I>(tool: AscTool<I>) => tool as unknown as AscTool<unknown>;
 
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
@@ -38,7 +32,6 @@ const platform = (description: string) => Platform.annotate({ description });
 
 const segment = (value: string) => encodeURIComponent(value);
 
-/** Builds a query, dropping parameters the caller left out. */
 const query = (params: Record<string, string | number | undefined>) =>
   Object.fromEntries(Object.entries(params).filter((entry): entry is [string, string | number] => entry[1] !== undefined));
 

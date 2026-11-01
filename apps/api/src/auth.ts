@@ -3,7 +3,6 @@ import { createClerkClient } from "@clerk/backend";
 import { Schema } from "effect";
 import type { MiddlewareHandler } from "hono";
 
-/** What the session middleware learned about the caller. All null when signed out. */
 export interface Session {
   readonly userId: string | null;
   readonly orgId: string | null;
@@ -19,7 +18,6 @@ export type GuardResult =
 const isUserId = Schema.is(UserId);
 const isOrgId = Schema.is(OrgId);
 
-/** The role is passed through untouched: RLS alone decides what it may do. */
 export const toOrgClaims = (session: Session): GuardResult => {
   if (!session.userId || !isUserId(session.userId)) return { ok: false, code: "unauthenticated" };
   if (!session.orgId || !isOrgId(session.orgId) || !session.orgRole) return { ok: false, code: "org_required" };
@@ -28,7 +26,7 @@ export const toOrgClaims = (session: Session): GuardResult => {
 
 // Clerk clones the request it is given through a Proxy, and undici on Node 26 rejects that clone of
 // @hono/node-server's lazy Request ("Illegal invocation" on `duplex`). Clerk only reads the URL and
-// headers, so it gets a plain Request with exactly those. This is also why `@clerk/hono` is not used.
+// headers, so it gets a plain Request with exactly those.
 export const headersOnly = (request: Request) => new Request(request.url, { headers: request.headers });
 
 export const clerkSession = ({

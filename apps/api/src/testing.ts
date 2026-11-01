@@ -20,7 +20,6 @@ export interface AscReply {
   readonly body: unknown;
 }
 
-/** Answers every ASC call with `reply` and records the URLs it was asked for. */
 export const fakeAsc = (reply: AscReply) => {
   const urls: Array<string> = [];
   const fetch = (async (input: string | URL | Request) => {
@@ -43,10 +42,7 @@ const sessionOf =
 
 export const signedOut: Session = { userId: null, orgId: null, orgRole: null };
 
-/**
- * The real app with Clerk swapped for a fixed session and ASC for `fetch`. The database is real,
- * but tests that never reach it can run without one: postgres.js connects on the first query.
- */
+/** Tests that never reach the database run without one: postgres.js connects on the first query. */
 export const testApp = async (options: { readonly session: Session; readonly fetch: typeof globalThis.fetch }) => {
   const keyring = await Effect.runPromise(parseKeyring(`1:${Buffer.alloc(32, 7).toString("base64")}`));
   const runtime = ManagedRuntime.make(

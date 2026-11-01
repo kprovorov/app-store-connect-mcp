@@ -1,7 +1,5 @@
 import { Schema } from "effect";
 
-/** The HTTP contract between `web` and `api`. Dates travel as ISO 8601 strings. */
-
 export const KeyKind = Schema.Literals(["team", "individual"]);
 export type KeyKind = typeof KeyKind.Type;
 
@@ -17,7 +15,6 @@ export const Connection = Schema.Struct({
 });
 export type Connection = typeof Connection.Type;
 
-/** `issuerId` is required for team keys and must be absent for individual keys. */
 export const CreateConnectionRequest = Schema.Struct({
   name: Schema.String,
   keyKind: KeyKind,

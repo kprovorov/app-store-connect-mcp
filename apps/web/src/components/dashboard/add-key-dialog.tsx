@@ -31,7 +31,6 @@ type KeyForm = {
   issuerId: string;
   keyId: string;
   privateKey: string;
-  /** Set when the key came from a file, so the form shows the file name instead of the key. */
   privateKeyFile: string | null;
   vendorNumber: string;
 };
@@ -164,7 +163,6 @@ export function AddKeyDialog({ trigger }: { trigger?: ReactNode }) {
       return;
     }
     setErrors({});
-    // The private key lives in the request now. Don't keep it in the form, whatever the outcome.
     clearPrivateKey();
     create.mutate(parsed.request, {
       onSuccess: (connection) => {

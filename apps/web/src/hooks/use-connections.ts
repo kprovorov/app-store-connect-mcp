@@ -9,10 +9,6 @@ import { createApiClient, type ApiClient } from "@/lib/api";
 
 const connectionsKey = (orgId: string) => ["connections", orgId] as const;
 
-/**
- * The api client for the active org. The token is minted for the same `orgId` that keys the
- * cache, so a request started during an org switch can't fill one org's cache with another's rows.
- */
 function useOrgApi() {
   const { orgId, getToken } = useAuth();
   return useMemo(

@@ -34,7 +34,6 @@ export class VerificationFailed extends Data.TaggedError("VerificationFailed")<{
 
 export type Services = Database | Crypto | AscClient;
 
-/** The only place a stored connection becomes a response. The private key never leaves this module. */
 export const toDto = (connection: Connection): ConnectionDto => ({
   id: connection.id,
   name: connection.name,
@@ -59,14 +58,12 @@ const decodeCreateRequest = (body: unknown) =>
     }),
   );
 
-/** A connection id from the URL. Anything that is not a UUID cannot exist. */
 export const parseConnectionId = (raw: string) =>
   Effect.mapError(
     Schema.decodeUnknownEffect(ConnectionId)(raw),
     () => new ConnectionNotFound({ id: raw as ConnectionId }),
   );
 
-// RLS hides rows a member cannot write. The row was visible a moment ago, so a miss here means "not an admin".
 const asForbidden = <A, E, R>(effect: Effect.Effect<A, E | ConnectionNotFound, R>) =>
   Effect.catchTag(effect, "ConnectionNotFound", () => Effect.fail(new ConnectionForbidden()));
 
@@ -77,7 +74,6 @@ const storedCredentials = (connection: Connection) =>
       connection.encryptedPrivateKey,
       connectionSecretAad(connection.orgId, connection.id),
     );
-    // The key parsed on the way in, so failing now means the row is corrupt, not that the caller erred.
     return yield* Effect.orDie(
       parseCredentials({
         kind: connection.key.kind,

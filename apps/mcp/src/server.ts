@@ -14,7 +14,6 @@ export interface ServerDeps {
   readonly webOrigin: string;
 }
 
-/** A fresh server per request: the transport is stateless, so nothing outlives one HTTP call. */
 export const createMcpServer = (deps: ServerDeps) => {
   const server = new Server(
     { name: "app-store-connect", version: "0.1.0" },

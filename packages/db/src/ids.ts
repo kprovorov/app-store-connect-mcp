@@ -1,10 +1,8 @@
 import { Schema } from "effect";
 
-/** Clerk organization id, `org_...`. */
 export const OrgId = Schema.String.pipe(Schema.check(Schema.isPattern(/^org_[A-Za-z0-9]+$/)), Schema.brand("OrgId"));
 export type OrgId = typeof OrgId.Type;
 
-/** Clerk user id, `user_...`. */
 export const UserId = Schema.String.pipe(Schema.check(Schema.isPattern(/^user_[A-Za-z0-9]+$/)), Schema.brand("UserId"));
 export type UserId = typeof UserId.Type;
 

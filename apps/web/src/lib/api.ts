@@ -13,13 +13,11 @@ import { Schema } from "effect";
 
 import { env } from "@/lib/env";
 
-/** The api's own codes, plus the two ways a request fails before the api can answer with one. */
 export type ApiFailureCode = ApiErrorCode | "unreachable" | "bad_response";
 
 export class ApiRequestError extends Error {
   override readonly name = "ApiRequestError";
   readonly code: ApiFailureCode;
-  /** HTTP status, or 0 when no response arrived. */
   readonly status: number;
   readonly field: string | undefined;
   readonly reason: VerifyFailureReason | undefined;

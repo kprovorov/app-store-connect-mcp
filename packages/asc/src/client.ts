@@ -142,8 +142,6 @@ export class AscClient extends Context.Service<
     const fetchImpl = options.fetch ?? globalThis.fetch;
     const tokens = new Map<string, { readonly token: string; readonly expiresAtMillis: number }>();
 
-    // Keyed by a hash of the whole credential, not the key ID alone, so a row that reuses
-    // another tenant's key ID with a different private key can never receive that tenant's token.
     const tokenFor = (creds: AscCredentials) =>
       Effect.gen(function* () {
         const cacheKey = yield* Effect.promise(() => credentialFingerprint(creds));
@@ -190,7 +188,6 @@ export class AscClient extends Context.Service<
         });
       });
 
-    // A 5xx on a write may have been applied, so only reads retry server errors.
     const retryable = (method: AscMethod) => (error: AscRequestError) =>
       error._tag === "AscRateLimited" || (error._tag === "AscApiError" && error.status >= 500 && method === "GET");
 
@@ -223,7 +220,6 @@ export type VerifyResult =
 
 const firstDetail = (error: AscApiError) => error.errors[0]?.detail;
 
-/** Live check that the key works: `GET /v1/apps?limit=1`. */
 export const verifyCredentials = (creds: AscCredentials): Effect.Effect<VerifyResult, never, AscClient> =>
   AscClient.use((client) => client.request(creds, { method: "GET", path: "/v1/apps", query: { limit: 1 } })).pipe(
     Effect.as<VerifyResult>({ ok: true }),

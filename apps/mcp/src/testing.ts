@@ -16,7 +16,6 @@ export const callerFor = (userId: string, orgs: ReadonlyArray<{ id: string; name
   orgs: orgs.map((org) => ({ id: org.id as OrgId, name: org.name })),
 });
 
-/** Accepts only GOOD_TOKEN, as `caller`. */
 export const fakeAuthenticate =
   (caller: Caller): Authenticate =>
   async (request) => {
@@ -28,7 +27,7 @@ export const fakeAuthenticate =
 
 export const testKeyring = () => Effect.runPromise(parseKeyring(`1:${Buffer.alloc(32, 9).toString("base64")}`));
 
-/** The real app with Clerk and ASC faked. postgres.js connects on the first query, so tests that skip the DB need none. */
+/** postgres.js connects on the first query, so tests that skip the DB need none. */
 export const testApp = async (options: { readonly caller: Caller; readonly fetch?: typeof globalThis.fetch }) => {
   const runtime = ManagedRuntime.make(
     Layer.mergeAll(
@@ -49,7 +48,6 @@ export const testApp = async (options: { readonly caller: Caller; readonly fetch
 
 let nextId = 1;
 
-/** POSTs one JSON-RPC request to /mcp and returns the parsed response. */
 export const rpc = async (
   app: { request: (path: string, init: RequestInit) => Response | Promise<Response> },
   method: string,

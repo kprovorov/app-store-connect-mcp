@@ -39,7 +39,6 @@ const parsePrivateKey = (raw: string) =>
     return pem as PrivateKeyPem;
   });
 
-/** Parses the connect form. Proves the PEM is a P-256 PKCS#8 key by importing it. */
 export const parseCredentials = (raw: RawCredentials): Effect.Effect<AscCredentials, InvalidCredentials> =>
   Effect.gen(function* () {
     const keyId = raw.keyId.trim();

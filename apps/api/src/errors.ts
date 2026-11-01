@@ -27,7 +27,6 @@ const internal = (failure: DatabaseError | DecryptError): [number, ErrorBody] =>
   return [500, { code: "internal", message: "Something went wrong on our side" }];
 };
 
-// InvalidCredentials names the parser's field; the contract names the request field.
 const requestField = { kind: "keyKind", issuerId: "issuerId", keyId: "keyId", privateKey: "privateKey" } as const;
 
 const table: { [Tag in ApiFailure["_tag"]]: (failure: Extract<ApiFailure, { _tag: Tag }>) => [number, ErrorBody] } = {
