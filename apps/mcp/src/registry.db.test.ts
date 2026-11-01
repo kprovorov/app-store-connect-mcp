@@ -6,6 +6,7 @@ import {
   type OrgId,
   type UserId,
   connectionSecretAad,
+  deleteConnection,
   insertConnection,
   newConnectionId,
 } from "@asc-mcp/db";
@@ -49,8 +50,15 @@ let noConnections: Awaited<ReturnType<typeof testApp>>;
 let connectionA: ConnectionId;
 let connectionB: ConnectionId;
 
+const adminOf = (org: { id: string }): OrgClaims => ({
+  kind: "org",
+  sub: user as UserId,
+  orgId: org.id as OrgId,
+  orgRole: "org:admin",
+});
+
 const addConnection = async (org: { id: string }, keyId: string) => {
-  const admin: OrgClaims = { kind: "org", sub: user as UserId, orgId: org.id as OrgId, orgRole: "org:admin" };
+  const admin = adminOf(org);
   const id = newConnectionId();
   const pem = await p256Pem();
   await oneOrg.runtime.runPromise(
@@ -84,7 +92,12 @@ beforeAll(async () => {
   connectionA = await addConnection(orgA, `A${suffix.toUpperCase()}`.padEnd(10, "0").slice(0, 10));
   connectionB = await addConnection(orgB, `B${suffix.toUpperCase()}`.padEnd(10, "0").slice(0, 10));
 });
-afterAll(() => Promise.all([oneOrg, twoOrgs, noConnections].map((test) => test.dispose())));
+afterAll(async () => {
+  await oneOrg.runtime.runPromise(
+    Effect.all([deleteConnection(adminOf(orgA), connectionA), deleteConnection(adminOf(orgB), connectionB)]),
+  );
+  await Promise.all([oneOrg, twoOrgs, noConnections].map((test) => test.dispose()));
+});
 
 const callTool = async (test: typeof oneOrg, name: string, args: Record<string, unknown> = {}) => {
   calls.length = 0;
