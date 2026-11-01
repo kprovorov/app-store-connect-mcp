@@ -231,6 +231,24 @@ describe("AscClient", () => {
     expect(asc.calls[0]!.url).toBe(next);
   });
 
+  it("signs a fresh token scoped to exactly the request when scoped is set", async () => {
+    const { creds, publicKey } = await teamCreds();
+    const asc = fakeAsc([{ status: 200, body: {} }]);
+    await asc.ok((c) =>
+      Effect.andThen(
+        c.request(creds, { method: "GET", path: "/v1/apps", query: { "filter[platform]": "IOS", limit: 5, sort: "name" }, scoped: true }),
+        c.request(creds, { method: "GET", path: "https://api.appstoreconnect.apple.com/v1/builds/1?cursor=AQ&include=app", scoped: true }),
+      ),
+    );
+    const scopes = await Promise.all(
+      asc.calls.map(async (call) => {
+        const token = new Headers(call.init?.headers).get("authorization")!.replace("Bearer ", "");
+        return (await jwtVerify(token, publicKey)).payload.scope;
+      }),
+    );
+    expect(scopes).toEqual([["GET /v1/apps?filter[platform]=IOS"], ["GET /v1/builds/1?include=app"]]);
+  });
+
   it.each([
     "https://evil.example.com/v1/apps",
     "//evil.example.com/v1/apps",

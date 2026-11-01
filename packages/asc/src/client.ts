@@ -1,6 +1,6 @@
 import { Clock, Context, Data, type Duration, Effect, Layer, Schedule, Schema } from "effect";
 import type { AscCredentials } from "./credentials";
-import { type AscAuthError, signTokenWithExpiry } from "./token";
+import { type AscAuthError, signToken, signTokenWithExpiry } from "./token";
 
 export const ASC_ORIGIN = "https://api.appstoreconnect.apple.com";
 const VERSIONED_PATH = /^\/v[1-9]\//;
@@ -15,6 +15,11 @@ export interface AscRequest {
   readonly path: string;
   readonly query?: Readonly<Record<string, string | number | boolean | ReadonlyArray<string>>>;
   readonly body?: unknown;
+  /**
+   * Sign a one-off token whose `scope` claim allows only this method, path, and query.
+   * Apple rejects the token for any other request, so a bug in our code cannot widen it.
+   */
+  readonly scoped?: boolean;
 }
 
 export interface RateLimit {
@@ -92,6 +97,18 @@ export const resolveUrl = (request: AscRequest): URL | undefined => {
     url.searchParams.set(name, Array.isArray(value) ? value.join(",") : String(value));
   }
   return url;
+};
+
+// Apple ignores these when matching a request against the token scope.
+const UNSCOPED_PARAMS = new Set(["limit", "cursor", "sort"]);
+
+/** `GET /v1/apps?filter[platform]=IOS`, the scope entry format Apple documents (brackets unencoded). */
+const scopeFor = (method: AscMethod, url: URL) => {
+  const query = [...url.searchParams]
+    .filter(([name]) => !UNSCOPED_PARAMS.has(name))
+    .map(([name, value]) => `${name}=${value}`)
+    .join("&");
+  return `${method} ${url.pathname}${query ? `?${query}` : ""}`;
 };
 
 const isJson = (contentType: string) => /[/+]json\b/i.test(contentType);
@@ -181,7 +198,9 @@ export class AscClient extends Context.Service<
       Effect.gen(function* () {
         const url = resolveUrl(request);
         if (!url) return yield* new AscInvalidPath({ path: request.path });
-        const token = yield* tokenFor(creds);
+        const token = request.scoped
+          ? yield* signToken(creds, { scope: [scopeFor(request.method, url)] })
+          : yield* tokenFor(creds);
         return yield* send(url, request, token).pipe(
           Effect.retry({
             schedule: Schedule.exponential(options.retryBaseDelay ?? "500 millis"),
