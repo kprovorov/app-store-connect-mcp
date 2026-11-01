@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           signUpFallbackRedirectUrl="/dashboard"
           taskUrls={{ "choose-organization": "/choose-organization" }}
         >
-          {children}
+          <Providers>{children}</Providers>
         </ClerkProvider>
       </body>
     </html>
