@@ -10,8 +10,13 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@asc-mcp/contracts": "workspace:*",
+    "@clerk/nextjs": "^7.9.23",
+    "@tanstack/react-query": "^5.105.0",
+    "@tanstack/react-query-devtools": "^5.105.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.1",
+    "effect": "catalog:",
     "lucide-react": "^1.66.0",
     "next": "16.4.3",
     "next-themes": "^0.4.6",
