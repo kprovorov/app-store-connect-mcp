@@ -12,6 +12,9 @@
     },
     "typecheck": {},
     "lint": {},
-    "test": {}
+    "test": {},
+    "test:db": {
+      "cache": false
+    }
   }
 }

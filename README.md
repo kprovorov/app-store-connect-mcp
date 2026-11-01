@@ -27,6 +27,7 @@ pnpm build
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:db    # RLS integration tests, needs `supabase start` and applied migrations
 ```
 
 To run one app, filter by package name, for example `pnpm dev --filter=@asc-mcp/api`.
