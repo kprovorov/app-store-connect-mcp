@@ -79,6 +79,6 @@ curl -X POST http://localhost:8788/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-The server does not check the token audience yet. The Clerk instance has no registered MCP resource, so its tokens carry no `aud`, and checking one would reject every token. Once `mcp` has a public https URL, run the Clerk `configure_mcp_server` tool with that URL as `resource_url`. That registers the resource and turns on the audience claim. Then pass `audience: MCP_RESOURCE_URL` to `authenticateRequest` in `apps/mcp/src/auth.ts`.
+The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Once `mcp` has a public https URL, run the Clerk `configure_mcp_server` tool with that URL as `resource_url`. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
 `src/tools.ts` is the tool catalog. Each tool is a row with an Effect Schema input, MCP annotations, and a pure `toRequest` that returns the App Store Connect method, path, query, and body. `src/registry.ts` adds the optional `connection_id` argument to every tool, picks the connection, decrypts the key, calls Apple, and turns results and errors into tool output. To add a tool, add a row. `asc_get` covers any read the rows do not, with a token scoped to that one request.

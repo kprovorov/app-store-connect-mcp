@@ -22,13 +22,13 @@ const toDatabaseError = (error: unknown): DatabaseError => {
     }
     current = current.cause;
   }
-  return new DatabaseError({ code: undefined, message: error instanceof Error ? error.message : String(error) });
+  return new DatabaseError({ code: undefined, message: "Database request failed" });
 };
 
 export class Database extends Context.Service<
   Database,
   {
-    /** Runs `f` in a transaction as role `authenticated` with `claims`, so RLS applies. */
+    /** Runs `f` in a transaction as role `app_user` with `claims`, so RLS applies. */
     withClaims<A>(claims: RlsClaims, f: (tx: Tx) => Promise<A>): Effect.Effect<A, DatabaseError>;
   }
 >()("@asc-mcp/db/Database") {
@@ -47,7 +47,7 @@ export class Database extends Context.Service<
             Effect.tryPromise({
               try: () =>
                 db.transaction(async (tx) => {
-                  await tx.execute(sql`set local role authenticated`);
+                  await tx.execute(sql`set local role app_user`);
                   await tx.execute(sql`select set_config('request.jwt.claims', ${claimsJson(claims)}, true)`);
                   return f(tx);
                 }),

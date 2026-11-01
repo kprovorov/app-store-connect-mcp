@@ -29,6 +29,8 @@ function useConnectionMutation<TVariables, TResult>(run: (api: ApiClient, variab
   const scope = useOrgApi();
   const queryClient = useQueryClient();
   return useMutation({
+    // Create's variables hold the private key, so finished mutations leave the cache at once.
+    gcTime: 0,
     mutationFn: (variables: TVariables) => {
       if (!scope) throw new Error("No active organization.");
       return run(scope.api, variables);

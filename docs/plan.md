@@ -24,18 +24,18 @@ A hosted, multi-tenant MCP server for App Store Connect (ASC). A user signs up i
 | Key validation | Live `GET /v1/apps?limit=1` before save | Bad keys fail at the form, not inside an agent run |
 | Encryption | App-layer AES-256-GCM, versioned envelope string, AAD = `orgId:connectionId`, master key from env | DB dump alone exposes nothing. Row swapping fails to decrypt. Version prefix allows key rotation |
 | Tenancy | Connections belong to a Clerk organization | Orgs are mandatory (`force_organization_selection: true`) |
-| RLS | Server connects with Drizzle, and each request runs in a transaction that does `set local role authenticated` and sets `request.jwt.claims` | Without the role switch the policies would be decorative |
+| RLS | Server connects with Drizzle, and each request runs in a transaction that does `set local role app_user` and sets `request.jwt.claims` | Without the role switch the policies would be decorative. `app_user` is a role PostgREST never assumes, so the Supabase Data API (`anon`, `authenticated`) has no access to the table at all |
 | Claims shape | API: `{ sub, org_id, org_role }`. MCP: `{ sub, org_ids: [...] }` | Clerk OAuth tokens carry no org. MCP resolves memberships through the Clerk API |
 | MCP URL | One URL, `https://<mcp-host>/mcp` | Clerk issues OAuth tokens whose audience is the registered resource URL. A per-org path would not match |
-| MCP auth | Clerk as OAuth 2.1 authorization server, `mcp` as resource server (RFC 9728 metadata) | Native flow for Claude, Cursor, and other MCP clients |
+| MCP auth | Clerk as OAuth 2.1 authorization server, `mcp` as resource server (RFC 9728 metadata). Token audience must equal `MCP_RESOURCE_URL` (`MCP_ENFORCE_AUDIENCE`, on by default) | Native flow for Claude, Cursor, and other MCP clients. The audience check stops tokens Clerk issued for other resources |
 | Connection choice in tools | Optional `connection_id` argument. Defaults when the user can see exactly one connection | Agencies may hold several ASC teams |
 | Tool catalog | Registry table of tool definitions (Effect Schema input, annotations, request builder) plus a read-only `asc_get` escape hatch | One shape for every tool instead of N handlers |
-| web to api | Hono RPC client (`hc<AppType>`) with the Clerk session token as bearer, through react-query | Typed contract with no codegen |
+| web to api | `@asc-mcp/contracts` (Effect Schema) shared by both sides, plain `fetch` with the Clerk session token, through react-query | Let `api` and `web` be built in parallel against one contract. Responses are decoded at the boundary |
 
 ## External setup done
 
 - Clerk dev application `App Store Connect MCP` (`app_3LW5AFDcHj4TUE1UdRirX1ovob6`), created from the `b2b-saas` template. Organizations are enabled and selection is forced.
-- MCP resource registration is pending. Clerk requires an `https` resource URL, so it happens at deploy time or behind a tunnel.
+- MCP resource registration is pending (see README, mcp section). Clerk requires an `https` resource URL, so it happens at deploy time or behind a tunnel.
 
 ## Phases
 

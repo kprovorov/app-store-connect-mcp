@@ -80,7 +80,7 @@ describe("connections against the local database", () => {
     expect(await response.json()).toMatchObject({ ok: true, connection: { id } });
   });
 
-  it("lets RLS refuse writes from a non-admin with 403", async () => {
+  it("refuses writes from a non-admin with 403", async () => {
     const created = await create(asMember, { keyId: "MEMBER0001" });
     expect(created.status).toBe(403);
     expect(await created.json()).toMatchObject({ error: { code: "forbidden" } });

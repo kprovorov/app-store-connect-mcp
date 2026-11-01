@@ -119,7 +119,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "app_user"
           ],
           "using": "\"asc_connections\".\"org_id\" = any((select app.org_ids())::text[])"
         },
@@ -128,7 +128,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "app_user"
           ],
           "withCheck": "\"asc_connections\".\"org_id\" = (select app.admin_org_id())"
         },
@@ -137,7 +137,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "app_user"
           ],
           "using": "\"asc_connections\".\"org_id\" = (select app.admin_org_id())",
           "withCheck": "\"asc_connections\".\"org_id\" = (select app.admin_org_id())"
@@ -147,7 +147,7 @@
           "as": "PERMISSIVE",
           "for": "DELETE",
           "to": [
-            "authenticated"
+            "app_user"
           ],
           "using": "\"asc_connections\".\"org_id\" = (select app.admin_org_id())"
         }

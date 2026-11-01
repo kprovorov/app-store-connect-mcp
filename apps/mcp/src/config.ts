@@ -22,4 +22,5 @@ export const McpConfig = Config.all({
   clerkSecretKey: Config.Redacted("CLERK_SECRET_KEY"),
   clerkPublishableKey: Config.schema(PublishableKey, "CLERK_PUBLISHABLE_KEY"),
   acceptSessionTokens: Config.Boolean("MCP_DEV_ACCEPT_SESSION_TOKENS").pipe(Config.withDefault(false)),
+  enforceAudience: Config.Boolean("MCP_ENFORCE_AUDIENCE").pipe(Config.withDefault(true)),
 });

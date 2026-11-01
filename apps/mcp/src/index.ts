@@ -33,6 +33,7 @@ const app = makeApp({
     secretKey: Redacted.value(config.clerkSecretKey),
     publishableKey: config.clerkPublishableKey,
     acceptSessionTokens: config.acceptSessionTokens,
+    audience: config.enforceAudience ? config.resourceUrl : undefined,
   }),
 });
 

@@ -174,6 +174,7 @@ export function AddKeyDialog({ trigger }: { trigger?: ReactNode }) {
         const described = describeCreateError(error);
         if (described.kind === "field") setErrors({ [described.field]: described.message });
         else setProblem(described);
+        create.reset();
       },
     });
   };

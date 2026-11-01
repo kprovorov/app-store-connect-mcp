@@ -105,14 +105,22 @@ describe("asc_connections RLS", () => {
     expect(new Set((await run(listConnections(memberOfBoth))).map((c) => c.orgId))).toEqual(new Set([orgA, orgB]));
   });
 
-  it("shows nothing to the authenticated role without claims", async () => {
+  it("shows nothing to the app role without claims", async () => {
     const asOwner = await owner`select count(*)::int as n from asc_connections where org_id in (${orgA}, ${orgB})`;
     expect(asOwner[0]?.n).toBeGreaterThanOrEqual(2);
-    const asAnonymousUser = await owner.begin(async (tx) => {
-      await tx`set local role authenticated`;
+    const withoutClaims = await owner.begin(async (tx) => {
+      await tx`set local role app_user`;
       return tx`select count(*)::int as n from asc_connections`;
     });
-    expect(asAnonymousUser[0]?.n).toBe(0);
+    expect(withoutClaims[0]?.n).toBe(0);
+  });
+
+  it.each(["anon", "authenticated"])("denies the Supabase Data API role %s any access to the table", async (role) => {
+    const attempt = owner.begin(async (tx) => {
+      await tx.unsafe(`set local role ${role}`);
+      return tx`select count(*)::int as n from asc_connections`;
+    });
+    await expect(attempt).rejects.toMatchObject({ code: "42501" });
   });
 
   it("rejects a team key without an issuer at the database", async () => {

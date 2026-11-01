@@ -1,8 +1,9 @@
 import type { EncryptedSecret } from "@asc-mcp/crypto";
 import { sql } from "drizzle-orm";
-import { check, index, pgEnum, pgPolicy, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { authenticatedRole } from "drizzle-orm/supabase";
+import { check, index, pgEnum, pgPolicy, pgRole, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import type { ConnectionId, OrgId, UserId } from "./ids";
+
+export const appUser = pgRole("app_user").existing();
 
 export const keyKind = pgEnum("asc_key_kind", ["team", "individual"]);
 
@@ -33,14 +34,14 @@ export const ascConnections = pgTable(
     check("asc_connections_team_has_issuer", sql`(${t.keyKind} = 'team') = (${t.issuerId} is not null)`),
     unique("asc_connections_org_key_unique").on(t.orgId, t.keyId),
     index("asc_connections_org_id_idx").on(t.orgId),
-    pgPolicy("members read their orgs", { for: "select", to: authenticatedRole, using: sql`${t.orgId} = any(${orgIds}::text[])` }),
-    pgPolicy("admins insert", { for: "insert", to: authenticatedRole, withCheck: sql`${t.orgId} = ${adminOrgId}` }),
+    pgPolicy("members read their orgs", { for: "select", to: appUser, using: sql`${t.orgId} = any(${orgIds}::text[])` }),
+    pgPolicy("admins insert", { for: "insert", to: appUser, withCheck: sql`${t.orgId} = ${adminOrgId}` }),
     pgPolicy("admins update", {
       for: "update",
-      to: authenticatedRole,
+      to: appUser,
       using: sql`${t.orgId} = ${adminOrgId}`,
       withCheck: sql`${t.orgId} = ${adminOrgId}`,
     }),
-    pgPolicy("admins delete", { for: "delete", to: authenticatedRole, using: sql`${t.orgId} = ${adminOrgId}` }),
+    pgPolicy("admins delete", { for: "delete", to: appUser, using: sql`${t.orgId} = ${adminOrgId}` }),
   ],
 ).enableRLS();

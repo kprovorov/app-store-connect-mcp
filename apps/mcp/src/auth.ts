@@ -57,6 +57,7 @@ export const unauthorized = (resourceUrl: string, outcome: "missing" | "invalid"
 };
 
 const MEMBERSHIP_TTL_MILLIS = 30_000;
+const MEMBERSHIP_PAGE_SIZE = 100;
 const isUserId = Schema.is(UserId);
 const isOrgId = Schema.is(OrgId);
 
@@ -69,6 +70,8 @@ export const clerkAuthenticate = (options: {
   readonly secretKey: string;
   readonly publishableKey: string;
   readonly acceptSessionTokens: boolean;
+  /** Set to the MCP resource URL to reject tokens Clerk issued for other resources. */
+  readonly audience: string | undefined;
 }): Authenticate => {
   const clerk = createClerkClient({ secretKey: options.secretKey, publishableKey: options.publishableKey });
   const acceptsToken: Array<"oauth_token" | "session_token"> = options.acceptSessionTokens
@@ -80,10 +83,14 @@ export const clerkAuthenticate = (options: {
   const orgsOf = async (userId: string) => {
     const cached = memberships.get(userId);
     if (cached && cached.expiresAt > Date.now()) return cached.orgs;
-    const list = await clerk.users.getOrganizationMembershipList({ userId, limit: 100 });
-    const orgs = list.data.flatMap(({ organization }) =>
-      isOrgId(organization.id) ? [{ id: organization.id, name: organization.name }] : [],
-    );
+    const orgs: Array<Org> = [];
+    for (let offset = 0; ; offset += MEMBERSHIP_PAGE_SIZE) {
+      const page = await clerk.users.getOrganizationMembershipList({ userId, limit: MEMBERSHIP_PAGE_SIZE, offset });
+      for (const { organization } of page.data) {
+        if (isOrgId(organization.id)) orgs.push({ id: organization.id, name: organization.name });
+      }
+      if (page.data.length < MEMBERSHIP_PAGE_SIZE) break;
+    }
     memberships.set(userId, { orgs, expiresAt: Date.now() + MEMBERSHIP_TTL_MILLIS });
     return orgs;
   };
@@ -91,7 +98,10 @@ export const clerkAuthenticate = (options: {
   return async (request) => {
     const token = bearerToken(request);
     if (!token) return { kind: "missing" };
-    const state = await clerk.authenticateRequest(headersOnly(request), { acceptsToken });
+    const state = await clerk.authenticateRequest(headersOnly(request), {
+      acceptsToken,
+      ...(options.audience ? { audience: options.audience } : {}),
+    });
     if (!state.isAuthenticated) return { kind: "invalid" };
     const auth = state.toAuth();
     if (!auth.userId || !isUserId(auth.userId)) return { kind: "invalid" };

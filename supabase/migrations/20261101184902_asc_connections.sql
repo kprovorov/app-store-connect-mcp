@@ -18,7 +18,7 @@ CREATE TABLE "asc_connections" (
 --> statement-breakpoint
 ALTER TABLE "asc_connections" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE INDEX "asc_connections_org_id_idx" ON "asc_connections" USING btree ("org_id");--> statement-breakpoint
-CREATE POLICY "members read their orgs" ON "asc_connections" AS PERMISSIVE FOR SELECT TO "authenticated" USING ("asc_connections"."org_id" = any((select app.org_ids())::text[]));--> statement-breakpoint
-CREATE POLICY "admins insert" ON "asc_connections" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ("asc_connections"."org_id" = (select app.admin_org_id()));--> statement-breakpoint
-CREATE POLICY "admins update" ON "asc_connections" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ("asc_connections"."org_id" = (select app.admin_org_id())) WITH CHECK ("asc_connections"."org_id" = (select app.admin_org_id()));--> statement-breakpoint
-CREATE POLICY "admins delete" ON "asc_connections" AS PERMISSIVE FOR DELETE TO "authenticated" USING ("asc_connections"."org_id" = (select app.admin_org_id()));
+CREATE POLICY "members read their orgs" ON "asc_connections" AS PERMISSIVE FOR SELECT TO "app_user" USING ("asc_connections"."org_id" = any((select app.org_ids())::text[]));--> statement-breakpoint
+CREATE POLICY "admins insert" ON "asc_connections" AS PERMISSIVE FOR INSERT TO "app_user" WITH CHECK ("asc_connections"."org_id" = (select app.admin_org_id()));--> statement-breakpoint
+CREATE POLICY "admins update" ON "asc_connections" AS PERMISSIVE FOR UPDATE TO "app_user" USING ("asc_connections"."org_id" = (select app.admin_org_id())) WITH CHECK ("asc_connections"."org_id" = (select app.admin_org_id()));--> statement-breakpoint
+CREATE POLICY "admins delete" ON "asc_connections" AS PERMISSIVE FOR DELETE TO "app_user" USING ("asc_connections"."org_id" = (select app.admin_org_id()));

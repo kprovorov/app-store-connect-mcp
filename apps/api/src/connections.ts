@@ -86,6 +86,8 @@ const storedCredentials = (connection: Connection) =>
 
 export const createConnection = (claims: OrgClaims, body: unknown) =>
   Effect.gen(function* () {
+    // RLS also refuses the insert. Checking first keeps a member's request from spending the key's Apple quota.
+    if (claims.orgRole !== "org:admin") return yield* new ConnectionForbidden();
     const input = yield* decodeCreateRequest(body);
     const name = input.name.trim();
     if (!name) return yield* new InvalidInput({ field: "name", message: "Name is required" });
