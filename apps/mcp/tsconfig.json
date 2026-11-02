@@ -1,4 +1,4 @@
 {
   "extends": "@asc-mcp/typescript-config/node.json",
-  "include": ["src", "tsdown.config.ts"]
+  "include": ["server.ts", "src", "tsdown.config.ts"]
 }
