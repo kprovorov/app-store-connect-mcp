@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import app, { config, runtime } from "../server";
+import app, { config, runtime } from "./main";
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);

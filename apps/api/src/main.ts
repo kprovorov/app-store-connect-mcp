@@ -2,9 +2,9 @@ import { AscClient } from "@asc-mcp/asc";
 import { Crypto } from "@asc-mcp/crypto";
 import { Database } from "@asc-mcp/db";
 import { Effect, Layer, ManagedRuntime, Redacted } from "effect";
-import { makeApp } from "./src/app";
-import { clerkSession } from "./src/auth";
-import { ApiConfig } from "./src/config";
+import { makeApp } from "./app";
+import { clerkSession } from "./auth";
+import { ApiConfig } from "./config";
 
 const failWith = (what: string) => (error: unknown) => {
   throw new Error(`api: ${what}\n${error instanceof Error ? error.message : String(error)}`);
