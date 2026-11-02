@@ -82,3 +82,28 @@ curl -X POST http://localhost:8788/mcp \
 The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Once `mcp` has a public https URL, run the Clerk `configure_mcp_server` tool with that URL as `resource_url`. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
 `src/tools.ts` is the tool catalog. Each tool is a row with an Effect Schema input, MCP annotations, and a pure `toRequest` that returns the App Store Connect method, path, query, and body. `src/registry.ts` adds the optional `connection_id` argument to every tool, picks the connection, decrypts the key, calls Apple, and turns results and errors into tool output. To add a tool, add a row. `asc_get` covers any read the rows do not, with a token scoped to that one request.
+
+## Deploy
+
+Each app is its own Vercel project in the `provorovcom` team, connected to this repo. Pushes to `main` deploy to production. Other branches get preview deployments behind Vercel Authentication.
+
+| Project | Root directory | Production URL |
+| --- | --- | --- |
+| `asc-mcp-web` | `apps/web` | https://asc-mcp-web.vercel.app |
+| `asc-mcp-api` | `apps/api` | https://asc-mcp-api.vercel.app |
+| `asc-mcp-mcp` | `apps/mcp` | https://asc-mcp-mcp.vercel.app/mcp |
+
+`apps/api` and `apps/mcp` use Vercel's Hono preset. The preset loads `server.mjs`, which re-exports the tsdown bundle in `dist/main.mjs`. Vercel never compiles the workspace TypeScript itself. `src/index.ts` is the local Node server and is not used on Vercel.
+
+Environment variables per project:
+
+- `asc-mcp-web`: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MCP_URL`.
+- `asc-mcp-api`: `DATABASE_URL`, `ENCRYPTION_KEYS`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `WEB_ORIGIN`.
+- `asc-mcp-mcp`: the api variables plus `MCP_RESOURCE_URL`. `MCP_ENFORCE_AUDIENCE` stays unset, so the audience check is on.
+- All three: `ENABLE_EXPERIMENTAL_COREPACK=1`, so Vercel uses the pnpm version in `packageManager`.
+
+`DATABASE_URL` is the Supabase transaction pooler URL (port 6543). `api` and `mcp` must share one `ENCRYPTION_KEYS` value, and it must differ from local dev. Losing it makes every stored key unreadable.
+
+Apply migrations to the hosted database with `supabase link --project-ref <ref>` and then `supabase db push`. Then check that `postgres` can switch to the app role: `set role app_user; select 1;` in the SQL editor.
+
+The MCP URL is registered in Clerk as an OAuth resource (Clerk `configure_mcp_server`), so Clerk issues tokens with that audience.
