@@ -1,0 +1,29 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalEnv": ["DATABASE_URL", "ENCRYPTION_KEYS"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "PORT",
+        "WEB_ORIGIN",
+        "CLERK_PUBLISHABLE_KEY",
+        "CLERK_SECRET_KEY",
+        "MCP_RESOURCE_URL",
+        "MCP_DEV_ACCEPT_SESSION_TOKENS",
+        "MCP_ENFORCE_AUDIENCE"
+      ]
+    },
+    "typecheck": {},
+    "lint": {},
+    "test": {},
+    "test:db": {
+      "cache": false
+    }
+  }
+}

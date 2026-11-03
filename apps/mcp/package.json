@@ -1,0 +1,32 @@
+{
+  "name": "@asc-mcp/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "vitest run --config vitest.db.config.ts"
+  },
+  "dependencies": {
+    "@asc-mcp/asc": "workspace:*",
+    "@asc-mcp/crypto": "workspace:*",
+    "@asc-mcp/db": "workspace:*",
+    "@clerk/backend": "^3.26.5",
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "effect": "catalog:",
+    "hono": "^4.13.14"
+  },
+  "devDependencies": {
+    "@asc-mcp/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "^0.23.4",
+    "tsx": "^4.23.15",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

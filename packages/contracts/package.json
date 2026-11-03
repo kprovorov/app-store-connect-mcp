@@ -1,0 +1,19 @@
+{
+  "name": "@asc-mcp/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@asc-mcp/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
