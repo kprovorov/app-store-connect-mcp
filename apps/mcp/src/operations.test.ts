@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { buildCatalog, normalizeSchema, type Specification } from "./catalog-builder";
-import { catalog, discoverOperation, operations, operationRequest, operationsById, validateOperation, validatorFor } from "./operations";
+import { catalog, operations, operationRequest, operationsById, validateOperation, validatorFor } from "./operations";
 import { successResult } from "./registry";
+import { discover, resolveView } from "./tool-views";
 
 const source = readFileSync(new URL("../spec/app-store-connect-4.5.1.json", import.meta.url));
 const spec = JSON.parse(source.toString()) as Specification;
@@ -43,13 +44,14 @@ describe("Apple specification coverage", () => {
   });
 
   it("discovers operation IDs and describes arguments for the compact execution tools", () => {
-    const found = discoverOperation("asc_find_operations", { text: "apps_getInstance" });
-    expect(found).toMatchObject({ total: 1, operations: [{ operation: "apps_getInstance", method: "GET" }] });
-    const read = discoverOperation("asc_describe_operation", { operation: "apps_getInstance" });
-    expect(read).toMatchObject({ operation: "apps_getInstance", executionTool: "asc_read_operation", argumentsSchema: { type: "object", required: ["path"] } });
-    if (!read.argumentsSchema) throw new Error("Missing operation arguments schema");
+    const view = resolveView(new URL("https://mcp.example.com"));
+    const found = discover(view, { text: "apps_getInstance" });
+    expect(found).toMatchObject({ total: 1, tools: [{ operation: "apps_getInstance", method: "GET" }] });
+    const read = discover(view, { tool: "apps_getInstance" });
+    expect(read).toMatchObject({ operation: "apps_getInstance", executionTool: "execute", argumentsSchema: { type: "object", required: ["path"] } });
+    if (!("argumentsSchema" in read)) throw new Error("Missing operation arguments schema");
     expect(read.argumentsSchema.properties).not.toHaveProperty("connection_id");
-    expect(discoverOperation("asc_describe_operation", { operation: "appAssetLibraryPlacements_createInstance" })).toMatchObject({ executionTool: "asc_write_operation" });
+    expect(discover(view, { tool: "appAssetLibraryPlacements_createInstance" })).toMatchObject({ executionTool: "execute" });
   });
 });
 

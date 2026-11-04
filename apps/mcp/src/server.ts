@@ -5,7 +5,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { ManagedRuntime } from "effect";
 import { callerOf } from "./auth";
-import { handlers, toolDefinitions } from "./registry";
+import { discover, execution, listTools, type ToolView } from "./tool-views";
 
 export type Services = Database | Crypto | AscClient;
 
@@ -15,30 +15,44 @@ export interface ServerDeps {
   readonly assetFetch?: typeof fetch;
 }
 
-export const createMcpServer = (deps: ServerDeps) => {
+export const createMcpServer = (deps: ServerDeps, view: ToolView) => {
   const server = new Server(
     { name: "app-store-connect", version: "0.1.0" },
     {
       capabilities: { tools: {} },
       instructions:
         "Tools act on App Store Connect through API keys the user added in the web app. " +
-        "Start with list_apps to find app ids. If a tool reports several connections, call list_connections and pass connection_id. " +
-        "asc_find_operations searches all Apple API operations; asc_describe_operation returns the arguments schema for one operation. " +
-        "Execute catalog operations by ID through asc_read_operation or asc_write_operation. Pass connection_id outside arguments. " +
-        "upload_screenshot uses the current asset library. upload_asset transfers bytes to an existing reservation. " +
-        "asc_get follows links.next for Apple resource paging. Report chunks require expected_sha256 after the first chunk.",
+        (view.kind === "compact"
+          ? "Use discover to search tools or get an exact argumentsSchema. Use execute with tool, arguments, and optional outer connection_id. Start by discovering list_apps. Discover list_connections when several connections are available. "
+          : "This URL selects direct tools. Call only the advertised tool names and follow tools/list nextCursor for more definitions. ") +
+        (view.readOnly ? "Read-only mode is enforced. Writes and uploads are unavailable. " : "") +
+        "Report chunks require expected_sha256 after the first chunk. API key roles still determine which Apple operations succeed.",
     },
   );
-  server.setRequestHandler(ListToolsRequestSchema, async (request) => {
-    if (request.params?.cursor !== undefined) throw new McpError(ErrorCode.InvalidParams, "The compact tool catalog has no further pages");
-    return { tools: [...toolDefinitions] };
-  });
+  server.setRequestHandler(ListToolsRequestSchema, async (request) => listTools(view, request.params?.cursor));
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const caller = callerOf(extra.authInfo);
     if (!caller) throw new McpError(ErrorCode.InvalidRequest, "Missing caller");
-    const handler = handlers.get(request.params.name);
-    if (!handler) throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${request.params.name}`);
-    const result = await deps.runtime.runPromise(handler(request.params.arguments ?? {}, { caller, webOrigin: deps.webOrigin, assetFetch: deps.assetFetch }));
+    const context = { caller, webOrigin: deps.webOrigin, assetFetch: deps.assetFetch };
+    const args = request.params.arguments ?? {};
+    const result = await (async () => {
+      if (view.kind === "compact") {
+        if (!["discover", "execute"].includes(request.params.name)) throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${request.params.name}`);
+        let invocation: ReturnType<typeof execution>;
+        try {
+          if (request.params.name === "discover") {
+            return { content: [{ type: "text" as const, text: JSON.stringify(discover(view, args)) }] };
+          }
+          invocation = execution(view, args);
+        } catch (error) {
+          return { isError: true, content: [{ type: "text" as const, text: JSON.stringify({ error: "invalid_arguments", message: error instanceof Error ? error.message : String(error) }) }] };
+        }
+        return deps.runtime.runPromise(invocation.entry.handler(invocation.arguments, context));
+      }
+      const entry = view.entries.get(request.params.name);
+      if (!entry) throw new McpError(ErrorCode.InvalidParams, `Tool is unavailable in this view: ${request.params.name}`);
+      return deps.runtime.runPromise(entry.handler(args, context));
+    })();
     if (Buffer.byteLength(JSON.stringify(result)) > 3.5 * 1024 * 1024) return { isError: true, content: [{ type: "text", text: JSON.stringify({ error: "response_too_large", message: "Use a smaller Apple page or fields selection. MCP responses are limited to 3.5 MiB." }) }] };
     return result;
   });

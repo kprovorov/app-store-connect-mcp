@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { operations,operationsById,validatorFor,validateOperation,operationRequest } from '../../apps/mcp/src/operations.ts';
-import { toolDefinitions } from '../../apps/mcp/src/registry.ts';
+import { registry } from '../../apps/mcp/src/registry.ts';
+import { listTools,resolveView } from '../../apps/mcp/src/tool-views.ts';
 const results:any[]=[];
 const check=(label:string,id:string,input:any,accept:boolean)=>{if(!operationsById.has(id))throw new Error('Invalid audit fixture operation '+id);let actual=true;let error='';try{validateOperation(operationsById.get(id)!,input)}catch(e){actual=false;error=String(e)}results.push({label,accept,actual,pass:accept===actual,...(error?{error}:{})});};
 let compiled=0;const compilationErrors:any[]=[];
@@ -24,7 +25,7 @@ check('asset placement anyOf rejects missing target','appAssetLibraryPlacements_
 check('asset placement anyOf accepts image and localization','appAssetLibraryPlacements_createInstance',{body:{data:{type:'appAssetLibraryPlacements',attributes:{placementType:'APP_SCREENSHOT'},relationships:{image:{data:{type:'appAssetLibraryImages',id:'img'}},appStoreVersionLocalization:{data:{type:'appStoreVersionLocalizations',id:'loc'}}}}}},true);
 check('oneOf accepts matching price resource','subscriptions_updateInstance',{path:{id:'s1'},body:{data:{type:'subscriptions',id:'s1'},included:[{type:'subscriptionPrices'}]}},true);
 check('oneOf rejects unknown included type','subscriptions_updateInstance',{path:{id:'s1'},body:{data:{type:'subscriptions',id:'s1'},included:[{type:'apps'}]}},false);
-results.push({label:'compact tool catalog retains full operation coverage',pass:toolDefinitions.length===28&&operations.length===1303&&['asc_read_operation','asc_write_operation'].every(name=>toolDefinitions.some(tool=>tool.name===name))});
+results.push({label:'compact tool catalog retains full operation coverage',pass:operations.length===1303&&operations.every(op=>registry.has(op.name))&&listTools(resolveView(new URL('https://mcp.example.com'))).tools.map(tool=>tool.name).join(',')==='discover,execute'});
 check('dot segment path rejected','apps_getInstance',{path:{id:'..'}},false);
 check('empty path id rejected','apps_getInstance',{path:{id:''}},false);
 const pathCases={status:'rechecked as negative fixtures'};

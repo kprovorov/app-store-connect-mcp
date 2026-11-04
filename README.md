@@ -8,9 +8,9 @@ Created in [T3 Code](https://t3.codes).
 
 1. Sign in at [app.ascmcp.dev](https://app.ascmcp.dev), choose an organization, and add an App Store Connect API key with the minimum Apple role you need.
 2. In your agent's remote MCP settings, add `https://mcp.ascmcp.dev` and complete the Clerk OAuth sign-in using the same account. The dashboard includes instructions for Claude Code, Cursor, VS Code, and Claude.ai.
-3. Ask the agent to call `list_connections` and `list_apps`. If several connections are visible, pass the desired `connection_id`.
+3. Ask the agent to discover `list_connections` and `list_apps`, then call them through `execute`. If several connections are visible, pass the desired outer `connection_id`.
 
-The server exposes 28 MCP tools. The existing 22 convenience tools remain, with six tools for API discovery, read and write execution, and uploads. All 1,303 operations in Apple's pinned App Store Connect API 4.5.1 specification are available through the read and write executors. Screenshot uploads use Apple's current asset library. Binary reports return bounded base64 resources.
+The root exposes two MCP tools, `discover` and `execute`. All 1,303 operations in Apple's pinned App Store Connect API 4.5.1 specification remain available. URL filters and role presets expose selected direct tools, and `?mode=readonly` blocks writes and uploads. Screenshot uploads use Apple's current asset library. Binary reports return bounded base64 resources.
 
 Every organization member can use that organization's stored keys, including write operations allowed by the Apple key. Server operators can decrypt stored keys. Read [SECURITY.md](SECURITY.md) before uploading credentials. For your own deployment, follow the setup below and use your own Clerk and database instances.
 
@@ -76,7 +76,7 @@ A session without an active org gets `403 org_required`. RLS decides who may wri
 
 ## mcp
 
-`apps/mcp` is the MCP server agents connect to, at the domain root: `https://mcp.ascmcp.dev` (locally `http://localhost:8788`). It speaks stateless Streamable HTTP. `POST /` answers JSON, and authenticated `GET /` and `DELETE /` answer `405`.
+`apps/mcp` is the MCP server agents connect to, at the domain root: `https://mcp.ascmcp.dev` (locally `http://localhost:8788`). It speaks stateless Streamable HTTP. POST requests to the root and preset paths answer JSON. Authenticated GET and DELETE requests to those paths answer `405`.
 
 Clerk is the OAuth authorization server, and `mcp` is the resource server.
 
@@ -98,15 +98,41 @@ The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only s
 
 `src/tools.ts` retains the existing convenience tools. `src/generated/operations.json` is the internal catalog of Apple operations and their argument schemas. `src/operations.ts` validates catalog requests against those schemas. `src/registry.ts` selects a visible connection, decrypts its key, and calls Apple. Catalog reads use request-scoped tokens. Apple API key roles still determine which operations succeed.
 
-`tools/list` returns all 28 tools in one response. It does not advertise individual API endpoints as tools. `asc_find_operations` searches the internal catalog and returns Apple operation IDs. `asc_describe_operation` accepts an operation ID and returns its arguments schema and the execution tool to use.
+The root `tools/list` returns only `discover` and `execute`. Search with `discover` and a `text` argument. Search results include groups, presets, tool names, Apple operation IDs, and a `nextOffset` for later search results. Pass `tool` alone to `discover` for the exact `argumentsSchema`. Both generated MCP names and original Apple operation IDs resolve to the same endpoint.
 
-Call `asc_read_operation` for GET or `asc_write_operation` for mutations. Supply `operation` with the Apple operation ID, `arguments` matching the described schema, and an optional outer `connection_id`.
-
-Operation arguments keep Apple's parameter and JSON:API field names. For example, call `asc_read_operation` with:
+Call `execute` with `tool`, optional `arguments` matching that schema, and an optional outer `connection_id`. Convenience tools, `list_connections`, and upload helpers use the same envelope. For example:
 
 ```json
-{"operation":"apps_getInstance","arguments":{"path":{"id":"123"},"query":{"fields[apps]":["name","bundleId"]}},"connection_id":"connection-a"}
+{"name":"discover","arguments":{"tool":"apps_getInstance"}}
+{"name":"execute","arguments":{"tool":"apps_getInstance","arguments":{"path":{"id":"123"},"query":{"fields[apps]":["name","bundleId"]}},"connection_id":"connection-a"}}
 ```
+
+### Select direct tools with the URL
+
+All URLs below use the MCP service domain, `https://mcp.ascmcp.dev`. The landing page remains at `https://ascmcp.dev`.
+
+| URL path and query | Advertised tools |
+| --- | --- |
+| `/` | `discover` and `execute` |
+| `/?tools=list_apps,get_app` | Exactly those direct tools |
+| `/?groups=apps,testflight` | Direct tools in either group |
+| `/dev` | Apps, TestFlight, signing, distribution, Xcode Cloud, and connections |
+| `/aso` | Apps, App Store metadata and reviews, assets, and connections |
+| `/testflight` | Apps, TestFlight, and connections |
+| `/analytics` | Apps, analytics and finance reports, performance metrics, and connections |
+| `/full` | Every pinned Apple operation and the convenience helpers |
+| `/?mode=readonly` | `discover` and `execute`, restricted to reads |
+| `/aso?mode=readonly` | Only the preset's direct read tools |
+
+Direct views advertise tool names and complete input schemas. Call those names directly instead of wrapping them in `execute`. Generated endpoint names use `asc_` and may have a hash suffix. Follow `tools/list.nextCursor` to get all definitions. Each page contains at most 100 tools and 512 KiB of JSON. A cursor belongs to its selected tool set and catalog version.
+
+Comma-separated values form a union inside each selector. A preset, `tools`, and `groups` intersect. Read-only mode then removes every write and upload. For example, `/dev?groups=testflight&tools=list_apps,list_beta_groups&mode=readonly` exposes only `list_beta_groups`. An empty intersection is valid. Empty, unknown, or repeated parameters return HTTP 400. Unknown paths return HTTP 404.
+
+The groups are `apps`, `app-store`, `testflight`, `xcode-cloud`, `analytics`, `signing`, `monetization`, `game-center`, `users`, `webhooks`, `assets`, `distribution`, `connections`, and `other`. Generated operations use their resource family. For an app's related resource, such as `/apps/{id}/betaGroups`, the related resource determines the group.
+
+`asc_get` accepts arbitrary Apple GET paths, so groups and role presets exclude it. It is available through root `execute`, `/full`, or an explicit `?tools=asc_get` view. For Apple `links.next` paging that needs this helper, use one of those views. Adding a `tools` selector cannot widen an existing group or preset selection.
+
+URL views configure each request. Hidden tools cannot be invoked through that URL, including through an old generic executor. A caller who changes the URL can select a different view. These options do not change the caller's Apple key permissions or create persistent account restrictions. All views share the configured root OAuth resource and audience. Preset metadata URLs return that same canonical resource.
 
 Writes pass the original JSON:API request under `arguments.body`. The `accept` argument selects among response media types when Apple offers a choice. Deprecated operations remain callable and discovery marks them as deprecated. The catalog covers the App Store Connect specification. App Store Server API, Transporter, and website-only actions are separate interfaces.
 
@@ -114,12 +140,12 @@ See [the pinned specification](apps/mcp/spec/README.md) for provenance and regen
 
 ### Upload a screenshot
 
-1. Use `list_app_store_versions` and `list_version_localizations` to find the target localization.
-2. Find `appAssetLibraryRefData_getCollection` with `asc_find_operations` and read its schema. Use its reference data to select the supported image dimensions and `placement_group` for `APP_SCREENSHOT`.
-3. Call `upload_screenshot` with the target and one file source:
+1. Use `execute` with `list_app_store_versions` and `list_version_localizations` to find the target localization.
+2. Find `appAssetLibraryRefData_getCollection` with `discover` and read its schema. Use its reference data to select the supported image dimensions and `placement_group` for `APP_SCREENSHOT`.
+3. Call `execute` with `tool` set to `upload_screenshot`, the target, and one file source:
 
 ```json
-{"app_id":"123","localization_id":"locale-a","placement_group":"IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE","file_name":"home.png","content_base64":"<canonical base64>","wait_seconds":0,"connection_id":"connection-a"}
+{"tool":"upload_screenshot","arguments":{"app_id":"123","localization_id":"locale-a","placement_group":"IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE","file_name":"home.png","content_base64":"<canonical base64>","wait_seconds":0},"connection_id":"connection-a"}
 ```
 
 Inline files support at most 2 MiB decoded. For larger files, replace `content_base64` with `source_url`. Source URLs must use a public HTTPS hostname on port 443, return the file directly without redirects, and contain at most 20 MiB. The server pins a public DNS address, verifies TLS for the original hostname, and forwards no credentials. Local filesystem paths are not accepted by the hosted server.
@@ -128,7 +154,7 @@ A successful result has `state: "placed"`, `image_id`, and `placement_id`. If pr
 
 An image still in `AWAITING_UPLOAD` returns a commit-stage error with recovery arguments. Complete any unfinished transfer with `upload_asset`, then call `appAssetLibraryImages_updateInstance` with `uploaded: true`. Only committed images in `UPLOAD_COMPLETE` are reported as processing. Resume `upload_screenshot` after the commit succeeds.
 
-The tool preserves existing screenshots. To set their display order, find `appAssetLibraryPlacementOrderingRequests_createInstance` and use the schema returned by `asc_describe_operation`. Its body identifies the localization and `placementGroup`, then lists placement IDs in `relationships.orderedPlacements.data` in display order. Uploading and placing screenshots does not submit the parent version for review.
+The tool preserves existing screenshots. To set their display order, find `appAssetLibraryPlacementOrderingRequests_createInstance` and use the schema returned by `discover`. Its body identifies the localization and `placementGroup`, then lists placement IDs in `relationships.orderedPlacements.data` in display order. Uploading and placing screenshots does not submit the parent version for review.
 
 `upload_asset` transfers bytes to any existing reservation that returns a supported Apple upload plan. Supply its GET-by-id Apple operation, `resource_id`, `file_name`, and one file source. The tool fetches the reservation, verifies its file size, and uploads all byte ranges. Its result includes MD5 and SHA-256 checksums of the original bytes. It does not commit. Use the generated PATCH operation afterward because checksum fields differ across asset resources. Storage transfers currently support HTTPS PUT operations on `*.blobstore.apple.com` and reject redirects or credential-bearing headers.
 

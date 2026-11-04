@@ -54,8 +54,9 @@ export const rpc = async (
   method: string,
   params: Record<string, unknown> = {},
   token: string | null = GOOD_TOKEN,
+  path = "/",
 ) => {
-  const response = await app.request("/", {
+  const response = await app.request(path, {
     method: "POST",
     headers: {
       "content-type": "application/json",
