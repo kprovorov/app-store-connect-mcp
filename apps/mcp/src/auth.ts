@@ -34,15 +34,17 @@ export const metadataUrl = (resourceUrl: string) => {
   return new URL(`/.well-known/oauth-protected-resource${resource.pathname.replace(/\/$/, "")}`, resource.origin).href;
 };
 
+const OAUTH_SCOPES = ["profile", "email"];
+
 export const protectedResourceMetadata = (resourceUrl: string, issuer: string) => ({
   resource: resourceUrl,
   authorization_servers: [issuer],
   bearer_methods_supported: ["header"],
-  scopes_supported: ["profile", "email"],
+  scopes_supported: OAUTH_SCOPES,
 });
 
 export const unauthorized = (resourceUrl: string, outcome: "missing" | "invalid") => {
-  const challenge = `resource_metadata="${metadataUrl(resourceUrl)}"`;
+  const challenge = `resource_metadata="${metadataUrl(resourceUrl)}", scope="${OAUTH_SCOPES.join(" ")}"`;
   return Response.json(
     outcome === "invalid"
       ? { error: "invalid_token", error_description: "The access token is invalid or expired" }
