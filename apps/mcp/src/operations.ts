@@ -31,22 +31,13 @@ export const operationRequest = (operation: Operation, args: Record<string, unkn
     scoped: operation.method === "GET",
   };
 };
-export const operationDefinition = (operation: Operation): Tool => ({
-  name: operation.name,
-  title: operation.operationId,
-  description: `${operation.method} ${operation.path}. Apple operation ${operation.operationId}.${operation.deprecated ? " Deprecated by Apple; prefer the current replacement." : ""} Pass Apple's JSON:API body unchanged. Binary reports return a bounded base64 resource; use response_offset and response_limit to retrieve subsequent bytes.`,
-  inputSchema: operation.inputSchema,
-  annotations: { readOnlyHint: operation.method === "GET", destructiveHint: operation.method !== "GET", idempotentHint: ["GET", "DELETE"].includes(operation.method), openWorldHint: true },
-});
-export const operationDefinitions = operations.map(operationDefinition);
-
 export const discoveryDefinitions: Tool[] = [
-  { name: "asc_find_operations", description: "Search every operation in the pinned Apple API by operation id, method, or path. Returns generated tool names. Includes deprecated operations.", inputSchema: { type: "object", properties: { text: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 100 } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-  { name: "asc_describe_operation", description: "Get a generated tool and its complete input schema by Apple operation id or MCP tool name.", inputSchema: { type: "object", properties: { operation: { type: "string", minLength: 1 } }, required: ["operation"], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+  { name: "asc_find_operations", description: "Search every operation in the pinned Apple API by operation ID, method, or path. Returns operation IDs for asc_read_operation or asc_write_operation. Includes deprecated operations.", inputSchema: { type: "object", properties: { text: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 100 } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+  { name: "asc_describe_operation", description: "Get the arguments schema and read or write execution tool for an Apple operation ID. Pass connection_id outside arguments when executing.", inputSchema: { type: "object", properties: { operation: { type: "string", minLength: 1 } }, required: ["operation"], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
 ];
 export const invocationDefinitions: Tool[] = ["read", "write"].map((kind) => ({
   name: `asc_${kind}_operation`,
-  description: `Execute a catalog ${kind === "read" ? "GET" : "POST, PATCH, or DELETE"} by its Apple operation ID. Use asc_describe_operation for the exact arguments schema. This fallback reaches the full catalog when a client limits tool discovery. Pass connection_id here, outside arguments.`,
+  description: `Execute any catalog ${kind === "read" ? "GET" : "POST, PATCH, or DELETE"} by its Apple operation ID. Use asc_find_operations to search and asc_describe_operation for the exact arguments schema. Pass connection_id here, outside arguments.`,
   inputSchema: {
     type: "object",
     properties: { operation: { type: "string", minLength: 1 }, arguments: { type: "object", additionalProperties: true }, connection_id: { type: "string", minLength: 1 } },
@@ -75,30 +66,10 @@ export const discoverOperation = (name: string, args: Record<string, unknown>) =
   if (name === "asc_describe_operation") {
     const operation = operationsByName.get(String(args.operation)) ?? operationsById.get(String(args.operation));
     if (!operation) throw new Error("Unknown Apple operation");
-    return { version: catalog.version, tool: operationDefinition(operation), executionTool: operation.method === "GET" ? "asc_read_operation" : "asc_write_operation" };
+    const { connection_id: _, ...properties } = operation.inputSchema.properties as Record<string, unknown>;
+    return { version: catalog.version, operation: operation.operationId, method: operation.method, path: operation.path, deprecated: operation.deprecated, argumentsSchema: { ...operation.inputSchema, properties }, executionTool: operation.method === "GET" ? "asc_read_operation" : "asc_write_operation" };
   }
   const terms = String(args.text ?? "").toLowerCase().split(/\s+/).filter(Boolean);
   const matches = operations.filter((operation) => terms.every((term) => `${operation.operationId} ${operation.method} ${operation.path}`.toLowerCase().includes(term)));
-  return { version: catalog.version, total: matches.length, operations: matches.slice(0, Number(args.limit ?? 25)).map(({ inputSchema: _, ...operation }) => operation) };
-};
-
-export const MAX_CATALOG_PAGE_BYTES = 1024 * 1024;
-export const catalogPage = (definitions: readonly Tool[], cursor?: string) => {
-  let offset = 0;
-  if (cursor !== undefined) {
-    const prefix = `${catalog.sha256.slice(0, 12)}:`;
-    if (!cursor.startsWith(prefix) || !/^\d+$/.test(cursor.slice(prefix.length))) throw new Error("Invalid tools cursor");
-    offset = Number(cursor.slice(prefix.length));
-    if (!Number.isSafeInteger(offset) || offset < 1 || offset >= definitions.length) throw new Error("Invalid tools cursor");
-  }
-  const tools: Tool[] = [];
-  let bytes = 100;
-  while (offset < definitions.length && tools.length < 50) {
-    const tool = definitions[offset]!;
-    const size = Buffer.byteLength(JSON.stringify(tool)) + 1;
-    if (size + 100 > MAX_CATALOG_PAGE_BYTES) throw new Error(`Tool schema exceeds catalog page budget: ${tool.name}`);
-    if (bytes + size > MAX_CATALOG_PAGE_BYTES) break;
-    tools.push(tool); bytes += size; offset++;
-  }
-  return { tools, ...(offset < definitions.length ? { nextCursor: `${catalog.sha256.slice(0, 12)}:${offset}` } : {}) };
+  return { version: catalog.version, total: matches.length, operations: matches.slice(0, Number(args.limit ?? 25)).map(({ operationId, method, path, deprecated }) => ({ operation: operationId, method, path, deprecated })) };
 };

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { operations,operationsById,validatorFor,validateOperation,operationRequest,operationDefinitions,catalogPage } from '../../apps/mcp/src/operations.ts';
+import { operations,operationsById,validatorFor,validateOperation,operationRequest } from '../../apps/mcp/src/operations.ts';
+import { toolDefinitions } from '../../apps/mcp/src/registry.ts';
 const results:any[]=[];
 const check=(label:string,id:string,input:any,accept:boolean)=>{if(!operationsById.has(id))throw new Error('Invalid audit fixture operation '+id);let actual=true;let error='';try{validateOperation(operationsById.get(id)!,input)}catch(e){actual=false;error=String(e)}results.push({label,accept,actual,pass:accept===actual,...(error?{error}:{})});};
 let compiled=0;const compilationErrors:any[]=[];
@@ -23,9 +24,7 @@ check('asset placement anyOf rejects missing target','appAssetLibraryPlacements_
 check('asset placement anyOf accepts image and localization','appAssetLibraryPlacements_createInstance',{body:{data:{type:'appAssetLibraryPlacements',attributes:{placementType:'APP_SCREENSHOT'},relationships:{image:{data:{type:'appAssetLibraryImages',id:'img'}},appStoreVersionLocalization:{data:{type:'appStoreVersionLocalizations',id:'loc'}}}}}},true);
 check('oneOf accepts matching price resource','subscriptions_updateInstance',{path:{id:'s1'},body:{data:{type:'subscriptions',id:'s1'},included:[{type:'subscriptionPrices'}]}},true);
 check('oneOf rejects unknown included type','subscriptions_updateInstance',{path:{id:'s1'},body:{data:{type:'subscriptions',id:'s1'},included:[{type:'apps'}]}},false);
-let pages=0,maxBytes=0,cursor:string|undefined;const names:string[]=[];
-do {const p=catalogPage(operationDefinitions,cursor);pages++;maxBytes=Math.max(maxBytes,Buffer.byteLength(JSON.stringify(p)));names.push(...p.tools.map(t=>t.name));cursor=p.nextCursor;}while(cursor);
-results.push({label:'every generated tool reached once through pagination',pass:names.length===1303&&new Set(names).size===1303,pages,maxBytes});
+results.push({label:'compact tool catalog retains full operation coverage',pass:toolDefinitions.length===28&&operations.length===1303&&['asc_read_operation','asc_write_operation'].every(name=>toolDefinitions.some(tool=>tool.name===name))});
 check('dot segment path rejected','apps_getInstance',{path:{id:'..'}},false);
 check('empty path id rejected','apps_getInstance',{path:{id:''}},false);
 const pathCases={status:'rechecked as negative fixtures'};

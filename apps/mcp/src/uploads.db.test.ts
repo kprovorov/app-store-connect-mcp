@@ -88,6 +88,7 @@ const call = async (name: string, args: Record<string, unknown>) => {
   const { body } = await rpc(app.app, "tools/call", { name, arguments: args });
   return { ...body.result, value: JSON.parse(body.result.content[0].text) };
 };
+const callOperation = (operation: (typeof operations)[number], args: Record<string, unknown>) => call(operation.method === "GET" ? "asc_read_operation" : "asc_write_operation", { operation: operation.operationId, arguments: args });
 const screenshot = { app_id: "app-a", localization_id: "locale-a", placement_group: "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", file_name: "home.png", content_base64: file.toString("base64") };
 
 describe("generated operations and uploads over HTTP", () => {
@@ -113,17 +114,17 @@ describe("generated operations and uploads over HTTP", () => {
 
   it("executes generated methods with validation before network access", async () => {
     const get = operations.find((operation) => operation.operationId === "apps_getInstance")!;
-    await call(get.name, { path: { id: "a/b" }, query: { "fields[apps]": ["name", "bundleId"] } });
+    await callOperation(get, { path: { id: "a/b" }, query: { "fields[apps]": ["name", "bundleId"] } });
     expect(calls[0]).toMatchObject({ method: "GET", path: "/v1/apps/a%2Fb", accept: "application/json" });
     const before = calls.length;
-    expect((await call(get.name, { path: { id: ".." } })).isError).toBe(true);
+    expect((await callOperation(get, { path: { id: ".." } })).isError).toBe(true);
     expect(calls).toHaveLength(before);
     const patch = operations.find((operation) => operation.operationId === "appStoreVersionLocalizations_updateInstance")!;
-    await call(patch.name, { path: { id: "locale-a" }, body: { data: { type: "appStoreVersionLocalizations", id: "locale-a", attributes: { keywords: "fit" } } } });
+    await callOperation(patch, { path: { id: "locale-a" }, body: { data: { type: "appStoreVersionLocalizations", id: "locale-a", attributes: { keywords: "fit" } } } });
     const post = operations.find((operation) => operation.operationId === "customerReviewResponses_createInstance")!;
-    await call(post.name, { body: { data: { type: "customerReviewResponses", attributes: { responseBody: "Thanks" }, relationships: { review: { data: { type: "customerReviews", id: "review-a" } } } } } });
+    await callOperation(post, { body: { data: { type: "customerReviewResponses", attributes: { responseBody: "Thanks" }, relationships: { review: { data: { type: "customerReviews", id: "review-a" } } } } } });
     const del = operations.find((operation) => operation.operationId === "bundleIds_deleteInstance")!;
-    await call(del.name, { path: { id: "bundle-a" } });
+    await callOperation(del, { path: { id: "bundle-a" } });
     expect(calls.map((request) => request.method)).toEqual(["GET", "PATCH", "POST", "DELETE"]);
   });
 
@@ -218,7 +219,7 @@ describe("generated operations and uploads over HTTP", () => {
 
   it("negotiates a CSV-only operation and returns its exact binary resource", async () => {
     const operation = operations.find((operation) => operation.responseMedia.length === 1 && operation.responseMedia[0] === "text/csv")!;
-    const result = await call(operation.name, { path: { id: "codes-a" }, response_limit: 4 });
+    const result = await callOperation(operation, { path: { id: "codes-a" }, response_limit: 4 });
     expect(calls[0]!.accept).toBe("text/csv");
     expect(result.value).toMatchObject({ totalBytes: 12, nextOffset: 4, mimeType: "text/csv" });
     expect(result.content[1]).toMatchObject({ resource: { blob: Buffer.from("one,").toString("base64") } });

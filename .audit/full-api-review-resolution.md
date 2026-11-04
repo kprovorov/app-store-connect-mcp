@@ -24,4 +24,6 @@ The commit recovery rule also applies to a fresh upload whose commit response st
 
 ## Final verdict
 
-The focused review in `.audit/evidence/fix-review.md` approves code head `942737e` with no blocking regressions. The parent reran the full suites after all source edits stopped. The reviewer independently reran the affected registry, transfer, and upload regressions. Subsequent changes only preserve this review and its decision trail.
+The focused review in `.audit/evidence/fix-review.md` approves code head `942737e` with no blocking regressions. The parent reran the full suites after all source edits stopped. The reviewer independently reran the affected registry, transfer, and upload regressions. The first documentation commit after that review only preserved its evidence.
+
+The later user revision supersedes the public per-endpoint tool design. The compact catalog follow-up changes discovery and dispatch, retains the validated execution and upload paths, and was checked by the parent. The earlier approval remains evidence for its recorded code head and is not presented as a review of the later follow-up.

@@ -2,7 +2,11 @@
 
 The goal is to make all 1,303 operations in Apple's pinned App Store Connect 4.5.1 specification callable through MCP and support screenshot uploads.
 
-## Synthesis
+## Compact catalog revision
+
+The user rejected advertising every API endpoint as an MCP tool. The server now advertises 28 tools, the original 22 and six discovery, execution, and upload helpers. The 1,303 generated operation descriptors remain internal. Search returns operation IDs, describe returns the argument schema, and the read or write executor validates and executes it. Per-endpoint public handlers and tool pagination are removed. Existing connection checks, argument validation, uploads, and report handling are preserved.
+
+## Original synthesis, superseded for tool discovery
 
 Use the generated per-operation registry candidate as the base. Preserve the 22 existing tools. Each Apple operation gets one deterministic tool name no longer than 40 characters, with an original-operation mapping. Shortened names retain a readable prefix and an eight-character SHA-256 suffix. Paginate tools/list so each response stays below the hosted response limit. Derive runtime validation and advertised input schemas from the same normalized specification.
 

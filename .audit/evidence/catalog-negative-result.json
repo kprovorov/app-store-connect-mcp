@@ -109,10 +109,8 @@
       "error": "Error: data/body/included/0 must have required property 'attributes'; data/body/included/0/type must be equal to one of the allowed values; data/body/included/0 must have required property 'attributes'; data/body/included/0 must match exactly one schema in oneOf"
     },
     {
-      "label": "every generated tool reached once through pagination",
-      "pass": true,
-      "pages": 27,
-      "maxBytes": 119050
+      "label": "compact tool catalog retains full operation coverage",
+      "pass": true
     },
     {
       "label": "dot segment path rejected",

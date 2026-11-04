@@ -20,7 +20,8 @@ import type { Services } from "./server";
 import { type AscTool, ascTools } from "./tools";
 import { AssetError } from "./assets";
 import { Ajv } from "ajv";
-import { discoverOperation, discoveryDefinitions, invocationDefinitions, operationDefinitions, operationRequest, operations, resolveInvocation } from "./operations";
+import { discoverOperation, discoveryDefinitions, invocationDefinitions, operationRequest, resolveInvocation } from "./operations";
+import type { Operation } from "./catalog-builder";
 import { uploadAsset, uploadDefinitions, uploadScreenshot } from "./uploads";
 
 export class InvalidArguments extends Data.TaggedError("InvalidArguments")<{ readonly message: string }> {}
@@ -210,6 +211,12 @@ export const callAscTool = (tool: AscTool<unknown>, args: Record<string, unknown
     return successResult(response);
   }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))));
 
+const callOperation = (operation: Operation, args: Record<string, unknown>, context: CallContext) => Effect.gen(function* () {
+  const appleRequest = yield* Effect.try({ try: () => operationRequest(operation, args), catch: (error) => new InvalidArguments({ message: String(error) }) });
+  const response = yield* withConnection(args, context, (request) => request(appleRequest));
+  return successResult(response, args);
+}).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))));
+
 const listConnectionsTool: Tool = {
   name: "list_connections",
   title: "List App Store Connect connections",
@@ -242,7 +249,7 @@ const definitionOf = (tool: AscTool<unknown>): Tool => {
   };
 };
 
-export const toolDefinitions: ReadonlyArray<Tool> = [listConnectionsTool, ...ascTools.map(definitionOf), ...discoveryDefinitions, ...invocationDefinitions, ...uploadDefinitions, ...operationDefinitions];
+export const toolDefinitions: ReadonlyArray<Tool> = [listConnectionsTool, ...ascTools.map(definitionOf), ...discoveryDefinitions, ...invocationDefinitions, ...uploadDefinitions];
 
 type Handler = (args: Record<string, unknown>, context: CallContext) => Effect.Effect<CallToolResult, never, Services>;
 
@@ -264,12 +271,7 @@ export const handlers: ReadonlyMap<string, Handler> = new Map<string, Handler>([
   ...discoveryDefinitions.map((tool): [string, Handler] => [tool.name, (args) => Effect.try({ try: () => text(discoverOperation(tool.name, args)), catch: (error) => new InvalidArguments({ message: String(error) }) }).pipe(Effect.catch((error) => Effect.succeed(errorText({ error: "invalid_arguments", message: error.message }))))]),
   ...invocationDefinitions.map((tool): [string, Handler] => [tool.name, (args, context) => Effect.gen(function* () {
     const invocation = yield* Effect.try({ try: () => resolveInvocation(tool.name, args), catch: (error) => new InvalidArguments({ message: String(error) }) });
-    return yield* handlers.get(invocation.operation.name)!(invocation.arguments, context);
-  }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))]),
-  ...operations.map((operation): [string, Handler] => [operation.name, (args, context) => Effect.gen(function* () {
-    const appleRequest = yield* Effect.try({ try: () => operationRequest(operation, args), catch: (error) => new InvalidArguments({ message: String(error) }) });
-    const response = yield* withConnection(args, context, (request) => request(appleRequest));
-    return successResult(response, args);
+    return yield* callOperation(invocation.operation, invocation.arguments, context);
   }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))]),
   ...uploadDefinitions.map((tool): [string, Handler] => {
     const validate = new Ajv({ strict: false }).compile(tool.inputSchema);

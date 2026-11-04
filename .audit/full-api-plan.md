@@ -31,3 +31,7 @@ The goal is to expose every operation in Apple's published App Store Connect Ope
 ## Open evidence
 
 The current catalog has 22 tools. No live Apple writes are authorized by this implementation task. Production screenshot uploads and API role access must be reported as unverified unless separately exercised with explicit test-account authorization.
+
+## User revision
+
+The user rejected the per-endpoint MCP tool count. The current acceptance contract is 28 advertised and registered tools, with all 1,303 Apple operations retained in the internal catalog and executed through the read/write tools. This supersedes the original requirement to expose each operation as a separate tool.

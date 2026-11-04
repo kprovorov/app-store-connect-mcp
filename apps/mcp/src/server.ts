@@ -6,7 +6,6 @@ import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } fr
 import type { ManagedRuntime } from "effect";
 import { callerOf } from "./auth";
 import { handlers, toolDefinitions } from "./registry";
-import { catalogPage } from "./operations";
 
 export type Services = Database | Crypto | AscClient;
 
@@ -24,15 +23,15 @@ export const createMcpServer = (deps: ServerDeps) => {
       instructions:
         "Tools act on App Store Connect through API keys the user added in the web app. " +
         "Start with list_apps to find app ids. If a tool reports several connections, call list_connections and pass connection_id. " +
-        "asc_find_operations searches all Apple API operations; asc_describe_operation returns their generated tool schemas. tools/list is paginated. " +
-        "asc_read_operation and asc_write_operation execute by operation ID when the client limits discovered tools. " +
+        "asc_find_operations searches all Apple API operations; asc_describe_operation returns the arguments schema for one operation. " +
+        "Execute catalog operations by ID through asc_read_operation or asc_write_operation. Pass connection_id outside arguments. " +
         "upload_screenshot uses the current asset library. upload_asset transfers bytes to an existing reservation. " +
         "asc_get follows links.next for Apple resource paging. Report chunks require expected_sha256 after the first chunk.",
     },
   );
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
-    try { return catalogPage(toolDefinitions, request.params?.cursor); }
-    catch (error) { throw new McpError(ErrorCode.InvalidParams, String(error)); }
+    if (request.params?.cursor !== undefined) throw new McpError(ErrorCode.InvalidParams, "The compact tool catalog has no further pages");
+    return { tools: [...toolDefinitions] };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const caller = callerOf(extra.authInfo);

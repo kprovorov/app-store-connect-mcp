@@ -6,7 +6,6 @@ import { resolveConnection } from "./connections";
 import { compactBody } from "./registry";
 import { callerFor, rpc, testApp } from "./testing";
 import { ascTools } from "./tools";
-import { operations } from "./operations";
 
 const requestFor = (name: string, args: Record<string, unknown>): AscRequest => {
   const tool = ascTools.find((candidate) => candidate.name === name)!;
@@ -27,13 +26,11 @@ describe("tools/list", () => {
 
   it("lists every tool with an object input schema, and connection_id on each ASC tool", async () => {
     const tools: Array<{ name: string; inputSchema: Record<string, any>; annotations: { readOnlyHint: boolean } }> = [];
-    let cursor: string | undefined;
-    do {
-      const { body } = await rpc(test.app, "tools/list", cursor ? { cursor } : {});
-      tools.push(...body.result.tools);
-      cursor = body.result.nextCursor;
-    } while (cursor);
-    expect(tools).toHaveLength(22 + 6 + operations.length);
+    const { body } = await rpc(test.app, "tools/list");
+    tools.push(...body.result.tools);
+    expect(body.result.nextCursor).toBeUndefined();
+    expect(Buffer.byteLength(JSON.stringify(body.result))).toBeLessThan(64 * 1024);
+    expect(tools).toHaveLength(28);
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
     for (const alias of ["list_connections", ...ascTools.map((tool) => tool.name)]) expect(tools.some((tool) => tool.name === alias)).toBe(true);
     for (const tool of tools) {
@@ -41,13 +38,16 @@ describe("tools/list", () => {
       if (!["list_connections", "asc_find_operations", "asc_describe_operation"].includes(tool.name)) expect(tool.inputSchema.properties.connection_id).toBeDefined();
     }
     const generated = new Map(tools.map((tool) => [tool.name, tool]));
-    for (const operation of operations) expect(generated.get(operation.name)!.annotations.readOnlyHint).toBe(operation.method === "GET");
+    expect(generated.get("asc_read_operation")!.annotations.readOnlyHint).toBe(true);
+    expect(generated.get("asc_write_operation")!.annotations.readOnlyHint).toBe(false);
     expect(ascTools.filter((alias) => !generated.get(alias.name)!.annotations.readOnlyHint).map((alias) => alias.name).sort()).toEqual(["reply_to_review", "update_version_localization", "set_what_to_test", "add_beta_tester", "add_testers_to_group"].sort());
     for (const alias of ascTools) {
       const schema = generated.get(alias.name)!.inputSchema;
       expect(schema.additionalProperties).toBe(false);
       expect(schema.required ?? []).not.toContain("connection_id");
     }
+    const removed = await rpc(test.app, "tools/call", { name: "asc_apps_getInstance", arguments: { path: { id: "1" } } });
+    expect(removed.body.error.code).toBe(-32602);
   });
 });
 

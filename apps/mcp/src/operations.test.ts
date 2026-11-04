@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { buildCatalog, normalizeSchema, type Specification } from "./catalog-builder";
-import { catalog, catalogPage, operations, operationDefinitions, operationRequest, operationsById, validateOperation, validatorFor } from "./operations";
+import { catalog, discoverOperation, operations, operationRequest, operationsById, validateOperation, validatorFor } from "./operations";
 import { successResult } from "./registry";
 
 const source = readFileSync(new URL("../spec/app-store-connect-4.5.1.json", import.meta.url));
@@ -42,17 +42,14 @@ describe("Apple specification coverage", () => {
     execFileSync(process.execPath, ["scripts/generate-catalog.ts", "--check"], { cwd: new URL("../", import.meta.url) });
   });
 
-  it("pages every tool once within the serialized response budget and rejects foreign cursors", () => {
-    const seen: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = catalogPage(operationDefinitions, cursor);
-      expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThan(1024 * 1024);
-      seen.push(...page.tools.map((tool) => tool.name));
-      cursor = page.nextCursor;
-    } while (cursor);
-    expect(seen).toEqual(operations.map((operation) => operation.name));
-    for (const bad of ["", "0", "other:50", `${catalog.sha256.slice(0, 12)}:9999`, `${catalog.sha256.slice(0, 12)}:1.2`]) expect(() => catalogPage(operationDefinitions, bad)).toThrow();
+  it("discovers operation IDs and describes arguments for the compact execution tools", () => {
+    const found = discoverOperation("asc_find_operations", { text: "apps_getInstance" });
+    expect(found).toMatchObject({ total: 1, operations: [{ operation: "apps_getInstance", method: "GET" }] });
+    const read = discoverOperation("asc_describe_operation", { operation: "apps_getInstance" });
+    expect(read).toMatchObject({ operation: "apps_getInstance", executionTool: "asc_read_operation", argumentsSchema: { type: "object", required: ["path"] } });
+    if (!read.argumentsSchema) throw new Error("Missing operation arguments schema");
+    expect(read.argumentsSchema.properties).not.toHaveProperty("connection_id");
+    expect(discoverOperation("asc_describe_operation", { operation: "appAssetLibraryPlacements_createInstance" })).toMatchObject({ executionTool: "asc_write_operation" });
   });
 });
 

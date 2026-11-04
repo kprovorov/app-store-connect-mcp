@@ -10,7 +10,7 @@ Created in [T3 Code](https://t3.codes).
 2. In your agent's remote MCP settings, add `https://mcp.ascmcp.dev` and complete the Clerk OAuth sign-in using the same account. The dashboard includes instructions for Claude Code, Cursor, VS Code, and Claude.ai.
 3. Ask the agent to call `list_connections` and `list_apps`. If several connections are visible, pass the desired `connection_id`.
 
-The tool catalog includes all 1,303 operations in Apple's pinned App Store Connect API 4.5.1 specification, plus the existing convenience tools. Generated tools cover reads, creation, updates, and deletion. Screenshot uploads use Apple's current asset library. Binary reports return bounded base64 resources.
+The server exposes 28 MCP tools. The existing 22 convenience tools remain, with six tools for API discovery, read and write execution, and uploads. All 1,303 operations in Apple's pinned App Store Connect API 4.5.1 specification are available through the read and write executors. Screenshot uploads use Apple's current asset library. Binary reports return bounded base64 resources.
 
 Every organization member can use that organization's stored keys, including write operations allowed by the Apple key. Server operators can decrypt stored keys. Read [SECURITY.md](SECURITY.md) before uploading credentials. For your own deployment, follow the setup below and use your own Clerk and database instances.
 
@@ -96,19 +96,19 @@ curl -X POST http://localhost:8788 \
 
 The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Set `MCP_RESOURCE_URL`, the web app's `NEXT_PUBLIC_MCP_URL`, and Clerk's `resource_url` to exactly `https://mcp.ascmcp.dev`. Resource identifiers are preserved as configured: adding a trailing slash changes the OAuth audience. Some clients still send it: Claude Code requests `resource=https://mcp.ascmcp.dev/`. So Clerk registers both spellings, and the server accepts a token for either one. Rejected tokens are logged with Clerk's reason, never the token. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
-`src/tools.ts` retains the existing convenience tools. `src/generated/operations.json` provides a tool for every operation in the pinned Apple specification. `src/operations.ts` validates each generated request against its advertised JSON Schema. `src/registry.ts` selects a visible connection, decrypts its key, and calls Apple. All reads use a token scoped to the request. Apple API key roles still determine which operations succeed.
+`src/tools.ts` retains the existing convenience tools. `src/generated/operations.json` is the internal catalog of Apple operations and their argument schemas. `src/operations.ts` validates catalog requests against those schemas. `src/registry.ts` selects a visible connection, decrypts its key, and calls Apple. Catalog reads use request-scoped tokens. Apple API key roles still determine which operations succeed.
 
-`tools/list` returns at most 50 tools and 1 MiB per page. Follow `nextCursor` until it is absent. `asc_find_operations` searches the complete catalog without listing every tool. `asc_describe_operation` accepts an Apple operation ID or generated tool name and returns its input schema. Long names use a stable SHA-256 suffix and stay within 40 characters. Search and describe return the actual generated names.
+`tools/list` returns all 28 tools in one response. It does not advertise individual API endpoints as tools. `asc_find_operations` searches the internal catalog and returns Apple operation IDs. `asc_describe_operation` accepts an operation ID and returns its arguments schema and the execution tool to use.
 
-Clients that limit tool discovery can call `asc_read_operation` for GET or `asc_write_operation` for mutations. Both appear on the first page. Supply `operation` with the Apple operation ID, `arguments` matching its generated schema, and an optional outer `connection_id`. These fallbacks use the same operation validation, connection access, and result handling as the generated tools.
+Call `asc_read_operation` for GET or `asc_write_operation` for mutations. Supply `operation` with the Apple operation ID, `arguments` matching the described schema, and an optional outer `connection_id`.
 
-Generated inputs keep Apple's parameter and JSON:API field names. For example, find `apps_getInstance`, then call the returned tool name with:
+Operation arguments keep Apple's parameter and JSON:API field names. For example, call `asc_read_operation` with:
 
 ```json
-{"path":{"id":"123"},"query":{"fields[apps]":["name","bundleId"]},"connection_id":"connection-a"}
+{"operation":"apps_getInstance","arguments":{"path":{"id":"123"},"query":{"fields[apps]":["name","bundleId"]}},"connection_id":"connection-a"}
 ```
 
-Writes pass the original JSON:API request under `body`. The generated `accept` argument selects among response media types when Apple offers a choice. Deprecated operations remain callable and are marked in their descriptions. The catalog covers the App Store Connect specification. App Store Server API, Transporter, and website-only actions are separate interfaces.
+Writes pass the original JSON:API request under `arguments.body`. The `accept` argument selects among response media types when Apple offers a choice. Deprecated operations remain callable and discovery marks them as deprecated. The catalog covers the App Store Connect specification. App Store Server API, Transporter, and website-only actions are separate interfaces.
 
 See [the pinned specification](apps/mcp/spec/README.md) for provenance and regeneration commands.
 

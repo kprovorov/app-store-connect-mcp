@@ -19,7 +19,11 @@ The goal is callable coverage of every operation in Apple's pinned App Store Con
 - `gitleaks git . --log-opts='--all --full-history' --redact=100 --no-banner` reports no secrets across 83 commits at the initial implementation head.
 - From `apps/mcp`, `node --import tsx ../../.audit/evidence/catalog-negative.ts` compiles every schema and passes all 19 preserved runtime witnesses. The result is kept in `.audit/evidence/catalog-negative-result.json`.
 
-## Limits and live gaps
+## Compact catalog follow-up
+
+The later user revision removes public per-endpoint tools. The server advertises and registers exactly 28 tools. All 1,303 operation schemas remain available through search, describe, and read/write execution. The parent verified 52 MCP unit tests, 19 MCP database integration tests, the MCP type check and production build, deterministic catalog regeneration, independent source correspondence, and all 19 runtime witnesses. The listing regression checks the exact count and a single response below 64 KiB. The endpoint-specific public tool names are rejected. Earlier independent approvals apply to their recorded heads; this follow-up was verified by the parent.
+
+## Live verification limits
 
 No live App Store Connect operation or production upload was performed. API roles, Apple upload host responses, real screenshot processing, and live placement behavior remain unverified against an Apple account. Local fixtures establish the implemented request flow and isolation behavior.
 
