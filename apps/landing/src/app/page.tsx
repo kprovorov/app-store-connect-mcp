@@ -13,7 +13,7 @@ const steps = [
   },
   {
     title: "Add the MCP URL to your agent",
-    body: "Paste one URL into Claude Code, Cursor, VS Code, or Claude.ai. The first call opens a browser so you can sign in.",
+    body: "Paste one URL into Claude, ChatGPT, Codex, Cursor, VS Code, or any client that supports remote MCP servers. The first call opens a browser so you can sign in.",
   },
 ];
 
@@ -111,8 +111,8 @@ export default function Home() {
               Let your AI agent work in App Store Connect.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-pretty text-muted-foreground">
-              A hosted MCP server for App Store Connect. Add your API key once, and Claude Code, Cursor, VS Code, or
-              Claude.ai can check builds, answer reviews, run TestFlight, and edit your store listing.
+              A hosted MCP server for App Store Connect. Add your API key once, and Claude, ChatGPT, Codex, Cursor, or
+              any MCP client can check builds, answer reviews, run TestFlight, and edit your store listing.
             </p>
             <div className="mt-8">
               <HeroActions />
