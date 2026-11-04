@@ -94,7 +94,7 @@ Each app is its own Vercel project in the `provorovcom` team, connected to this 
 | --- | --- | --- |
 | `asc-mcp-landing` | `apps/landing` | https://ascmcp.dev |
 | `asc-mcp-web` | `apps/web` | https://app.ascmcp.dev |
-| `asc-mcp-api` | `apps/api` | https://asc-mcp-api.vercel.app |
+| `asc-mcp-api` | `apps/api` | https://api.ascmcp.dev |
 | `asc-mcp-mcp` | `apps/mcp` | https://mcp.ascmcp.dev |
 
 `apps/api` and `apps/mcp` use Vercel's Hono preset. The preset loads `server.mjs`, which re-exports the tsdown bundle in `dist/main.mjs`. Vercel never compiles the workspace TypeScript itself. `src/index.ts` is the local Node server and is not used on Vercel.
