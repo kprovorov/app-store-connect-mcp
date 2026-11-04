@@ -19,3 +19,9 @@ The source correspondence audit used the same model family as implementation and
 The configured lint tasks cover the unchanged web and landing apps. Backend validation relies on type checks, runtime tests, source correspondence, and review. No backend lint coverage is claimed.
 
 The storage host allowlist is a deliberate deviation from the design review's suggestion to rely on provenance alone. It adds a restriction based on Apple's documented blobstore example. Other upload hosts require review. Live App Store Connect uploads and account permissions remain unverified.
+
+The commit recovery rule also applies to a fresh upload whose commit response still says `AWAITING_UPLOAD`. This deliberately replaces the initial review's suggestion to preserve fresh-path polling. It fails with an actionable error instead of assuming the commit succeeded. If Apple returns a stale state, the caller can repeat the named commit. The live response behavior remains unverified.
+
+## Final verdict
+
+The focused review in `.audit/evidence/fix-review.md` approves code head `942737e` with no blocking regressions. The parent reran the full suites after all source edits stopped. The reviewer independently reran the affected registry, transfer, and upload regressions. Subsequent changes only preserve this review and its decision trail.
