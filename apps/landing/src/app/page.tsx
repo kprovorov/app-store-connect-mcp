@@ -1,10 +1,6 @@
-import { Show } from "@clerk/nextjs";
-import Link from "next/link";
-import { Suspense } from "react";
-
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { env } from "@/lib/env";
 
 const steps = [
   {
@@ -44,47 +40,34 @@ const capabilities = [
   },
 ];
 
+// The app lives on another origin, so the landing can't see the Clerk session.
+// Signed-in users who click "Sign in" are sent straight to the dashboard by Clerk.
+const signInUrl = `${env.appUrl}/sign-in`;
+const signUpUrl = `${env.appUrl}/sign-up`;
+
 function HeaderActions() {
   return (
-    <Suspense fallback={<Skeleton className="h-8 w-28" />}>
-      <Show when="signed-out">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" className="hidden sm:inline-flex">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sign-up">Get started</Link>
-          </Button>
-        </div>
-      </Show>
-      <Show when="signed-in">
-        <Button asChild>
-          <Link href="/dashboard">Open dashboard</Link>
-        </Button>
-      </Show>
-    </Suspense>
+    <div className="flex items-center gap-2">
+      <Button asChild variant="ghost" className="hidden sm:inline-flex">
+        <a href={signInUrl}>Sign in</a>
+      </Button>
+      <Button asChild>
+        <a href={signUpUrl}>Get started</a>
+      </Button>
+    </div>
   );
 }
 
 function HeroActions() {
   return (
-    <Suspense fallback={<Skeleton className="h-9 w-40" />}>
-      <Show when="signed-out">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button asChild size="lg" className="px-4">
-            <Link href="/sign-up">Get started</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="px-4">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        </div>
-      </Show>
-      <Show when="signed-in">
-        <Button asChild size="lg" className="px-4">
-          <Link href="/dashboard">Open dashboard</Link>
-        </Button>
-      </Show>
-    </Suspense>
+    <div className="flex flex-wrap items-center gap-3">
+      <Button asChild size="lg" className="px-4">
+        <a href={signUpUrl}>Get started</a>
+      </Button>
+      <Button asChild size="lg" variant="outline" className="px-4">
+        <a href={signInUrl}>Sign in</a>
+      </Button>
+    </div>
   );
 }
 

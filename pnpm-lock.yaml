@@ -246,6 +246,61 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  apps/landing:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      cn:
+        specifier: ^0.5.1
+        version: 0.5.1
+      next:
+        specifier: 16.4.3
+        version: 16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      radix-ui:
+        specifier: ^1.8.1
+        version: 1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      shadcn:
+        specifier: ^4.23.0
+        version: 4.23.0(supports-color@7.2.0)
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
+    devDependencies:
+      '@asc-mcp/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@tailwindcss/turbopack':
+        specifier: ^4
+        version: 4.3.3
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.3.0(@types/react@19.3.0)
+      eslint:
+        specifier: ^9
+        version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
+      eslint-config-next:
+        specifier: 16.4.3
+        version: 16.4.3(@typescript-eslint/parser@8.72.1(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
+      tailwindcss:
+        specifier: ^4
+        version: 4.3.3
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   apps/mcp:
     dependencies:
       '@asc-mcp/asc':
@@ -7080,7 +7135,7 @@ snapshots:
       fuzzysort: 3.1.0
       kleur: 4.1.5
       ora: 8.2.0
-      postcss: 8.5.23
+      postcss: 8.5.32
       prompts: 2.4.2
       recast: 0.23.21
       socks: 2.8.10
@@ -9711,7 +9766,7 @@ snapshots:
       kleur: 4.1.5
       open: 11.0.4
       ora: 8.2.0
-      postcss: 8.5.23
+      postcss: 8.5.32
       postcss-selector-parser: 7.1.7
       prompts: 2.4.2
       recast: 0.23.21

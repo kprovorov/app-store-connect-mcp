@@ -1,11 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isDashboard = createRouteMatcher(["/dashboard(.*)"]);
+// Everything else is the dashboard and needs a session with an organization.
+// `/choose-organization` must stay public: pending sessions are sent there.
+const isPublic = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/choose-organization(.*)"]);
 
 export default clerkMiddleware(
   async (auth, req) => {
-    if (!isDashboard(req)) return;
+    if (isPublic(req)) return;
     // `protect()` sends pending sessions (signed in, no org yet) to sign-in, which loops.
     // Send them to the org task instead.
     const { sessionStatus } = await auth({ treatPendingAsSignedOut: false });

@@ -8,7 +8,8 @@ Created in [T3 Code](https://t3.codes).
 
 This is a pnpm and Turborepo monorepo.
 
-- `apps/web` is the Next.js dashboard on port 3000.
+- `apps/landing` is the Next.js landing page on port 3001. It is static and links to `web` for sign-in.
+- `apps/web` is the Next.js dashboard on port 3000. The dashboard is at `/`, next to `/sign-in`, `/sign-up`, and `/choose-organization`.
 - `apps/api` is the Hono API that `web` calls, on port 8787.
 - `apps/mcp` is the Hono MCP server that agents connect to, on port 8788.
 - `packages/typescript-config` has the shared `tsconfig` presets: `base.json`, `node.json`, and `nextjs.json`.
@@ -22,7 +23,7 @@ You need Node 26 and pnpm 12. To run Supabase locally, you also need Docker.
 
 ```sh
 pnpm install
-pnpm dev        # web on :3000, api on :8787, mcp on :8788
+pnpm dev        # landing on :3001, web on :3000, api on :8787, mcp on :8788
 pnpm build
 pnpm typecheck
 pnpm lint
@@ -33,6 +34,8 @@ pnpm test:db    # RLS integration tests, needs `supabase start` and applied migr
 To run one app, filter by package name, for example `pnpm dev --filter=@asc-mcp/api`.
 
 To start the local database, run `supabase start`. Copy `.env.example` to `.env` and fill in the values.
+
+The Next.js apps read `NEXT_PUBLIC_*` variables from their own `.env.local`. `apps/web` needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MCP_URL`, and the Clerk keys. `apps/landing` needs `NEXT_PUBLIC_APP_URL=http://localhost:3000`.
 
 ## Database migrations
 
@@ -89,7 +92,8 @@ Each app is its own Vercel project in the `provorovcom` team, connected to this 
 
 | Project | Root directory | Production URL |
 | --- | --- | --- |
-| `asc-mcp-web` | `apps/web` | https://asc-mcp-web.vercel.app |
+| `asc-mcp-landing` | `apps/landing` | https://ascmcp.dev |
+| `asc-mcp-web` | `apps/web` | https://app.ascmcp.dev |
 | `asc-mcp-api` | `apps/api` | https://asc-mcp-api.vercel.app |
 | `asc-mcp-mcp` | `apps/mcp` | https://mcp.ascmcp.dev |
 
@@ -97,10 +101,11 @@ Each app is its own Vercel project in the `provorovcom` team, connected to this 
 
 Environment variables per project:
 
+- `asc-mcp-landing`: `NEXT_PUBLIC_APP_URL` (`https://app.ascmcp.dev`).
 - `asc-mcp-web`: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MCP_URL`.
-- `asc-mcp-api`: `DATABASE_URL`, `ENCRYPTION_KEYS`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `WEB_ORIGIN`.
+- `asc-mcp-api`: `DATABASE_URL`, `ENCRYPTION_KEYS`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `WEB_ORIGIN` (`https://app.ascmcp.dev`).
 - `asc-mcp-mcp`: the api variables plus `MCP_RESOURCE_URL`. `MCP_ENFORCE_AUDIENCE` stays unset, so the audience check is on.
-- All three: `ENABLE_EXPERIMENTAL_COREPACK=1`, so Vercel uses the pnpm version in `packageManager`.
+- All four: `ENABLE_EXPERIMENTAL_COREPACK=1`, so Vercel uses the pnpm version in `packageManager`.
 
 `DATABASE_URL` is the Supabase transaction pooler URL (port 6543). `api` and `mcp` must share one `ENCRYPTION_KEYS` value, and it must differ from local dev. Losing it makes every stored key unreadable.
 
