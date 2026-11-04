@@ -4,6 +4,16 @@
 
 Created in [T3 Code](https://t3.codes).
 
+## Connect to the hosted server
+
+1. Sign in at [app.ascmcp.dev](https://app.ascmcp.dev), choose an organization, and add an App Store Connect API key with the minimum Apple role you need.
+2. In your agent's remote MCP settings, add `https://mcp.ascmcp.dev` and complete the Clerk OAuth sign-in using the same account. The dashboard includes instructions for Claude Code, Cursor, VS Code, and Claude.ai.
+3. Ask the agent to call `list_connections` and `list_apps`. If several connections are visible, pass the desired `connection_id`.
+
+The tool catalog includes app/build/version reads, reviews, TestFlight, Xcode Cloud, performance metrics, and a read-only `asc_get` for other Apple API paths. Write tools can reply to reviews, update version localization and TestFlight notes, and manage testers. Binary report responses are not supported.
+
+Every organization member can use that organization's stored keys, including write operations allowed by the Apple key. Server operators can decrypt stored keys. Read [SECURITY.md](SECURITY.md) before uploading credentials. For your own deployment, follow the setup below and use your own Clerk and database instances.
+
 ## Repo layout
 
 This is a pnpm and Turborepo monorepo.
@@ -33,9 +43,11 @@ pnpm test:db    # RLS integration tests, needs `supabase start` and applied migr
 
 To run one app, filter by package name, for example `pnpm dev --filter=@asc-mcp/api`.
 
-To start the local database, run `supabase start`. Copy `.env.example` to `.env` and fill in the values.
+To start the local database, run `supabase start`. Copy `.env.example` to `.env` and fill in development values. Generate the development encryption key with `pnpm --filter @asc-mcp/crypto gen-key`.
 
-The Next.js apps read `NEXT_PUBLIC_*` variables from their own `.env.local`. `apps/web` needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MCP_URL`, and the Clerk keys. `apps/landing` needs `NEXT_PUBLIC_APP_URL=http://localhost:3000`.
+The Next.js apps read their own `.env.local`. Copy `apps/web/.env.example` and `apps/landing/.env.example` to `.env.local` in the same directories. Use one Clerk development instance for both web and the backend. See [CONTRIBUTING.md](CONTRIBUTING.md) for organization/OAuth setup and checks. Never point integration tests at production.
+
+CI runs type checks, lint, unit tests, builds, dependency audit, an isolated PostgreSQL 17 integration suite, and a full-history Gitleaks scan. Builds fetch Google Fonts. [Dependency security notes](docs/dependency-security.md) describe remaining tooling advisories.
 
 ## Database migrations
 
@@ -112,3 +124,11 @@ Environment variables per project:
 Apply migrations to the hosted database with `supabase link --project-ref <ref>` and then `supabase db push`. Then check that `postgres` can switch to the app role: `set role app_user; select 1;` in the SQL editor.
 
 The MCP URL is registered in Clerk as an OAuth resource (Clerk `configure_mcp_server`) twice: `https://mcp.ascmcp.dev` and `https://mcp.ascmcp.dev/`. Clerk issues each token with the audience the client asked for.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and [SECURITY.md](SECURITY.md) for private vulnerability reports. Keep credentials and customer data out of public issues and PRs.
+
+## License
+
+[MIT](LICENSE), copyright 2026 Kirill Provorov.

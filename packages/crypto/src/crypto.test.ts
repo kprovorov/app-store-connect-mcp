@@ -14,11 +14,11 @@ const failure = <A, E>(effect: Effect.Effect<A, E>) =>
 describe("encrypt and decrypt", () => {
   it("round trips and never repeats a ciphertext", async () => {
     const keyring = await run(parseKeyring(v1));
-    const a = await run(encrypt(keyring, "-----BEGIN PRIVATE KEY-----\nabc", aad));
-    const b = await run(encrypt(keyring, "-----BEGIN PRIVATE KEY-----\nabc", aad));
+    const a = await run(encrypt(keyring, "synthetic private key text", aad));
+    const b = await run(encrypt(keyring, "synthetic private key text", aad));
     expect(a).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(a).not.toBe(b);
-    expect(await run(decrypt(keyring, a, aad))).toBe("-----BEGIN PRIVATE KEY-----\nabc");
+    expect(await run(decrypt(keyring, a, aad))).toBe("synthetic private key text");
   });
 
   it("fails when the AAD differs", async () => {

@@ -166,12 +166,12 @@ describe("asc_connections RLS", () => {
       parseKeyring(`1:${Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(32))).toString("base64")}`),
     );
     const id = newConnectionId();
-    const secret = await Effect.runPromise(encrypt(keyring, "-----BEGIN PRIVATE KEY-----", connectionSecretAad(orgA, id)));
+    const secret = await Effect.runPromise(encrypt(keyring, "synthetic private key text", connectionSecretAad(orgA, id)));
     await run(insertConnection(adminA, newConnection({ id, encryptedPrivateKey: secret })));
     const stored = await run(getConnection(adminA, id));
 
     expect(await Effect.runPromise(decrypt(keyring, stored.encryptedPrivateKey, connectionSecretAad(orgA, id)))).toBe(
-      "-----BEGIN PRIVATE KEY-----",
+      "synthetic private key text",
     );
     const moved = await Effect.runPromise(
       Effect.flip(decrypt(keyring, stored.encryptedPrivateKey, connectionSecretAad(orgA, connA))),

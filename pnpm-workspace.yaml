@@ -16,3 +16,8 @@ allowBuilds:
   esbuild: false
   sharp: false
   unrs-resolver: false
+
+# drizzle-kit's legacy TS loader uses only the compatible transform API.
+# Keep its nested esbuild above GHSA-67mh-4wv8-2f99's patched floor.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": 0.25.12

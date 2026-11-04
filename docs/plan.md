@@ -34,8 +34,8 @@ A hosted, multi-tenant MCP server for App Store Connect (ASC). A user signs up i
 
 ## External setup done
 
-- Clerk dev application `App Store Connect MCP` (`app_3LW5AFDcHj4TUE1UdRirX1ovob6`), created from the `b2b-saas` template. Organizations are enabled and selection is forced.
-- MCP resource registration is pending (see README, mcp section). Clerk requires an `https` resource URL, so it happens at deploy time or behind a tunnel.
+- The hosted Clerk application has organizations enabled and selection required. Contributors use their own development instance; see CONTRIBUTING.md.
+- The hosted MCP resource is registered for both origin spellings; see README, mcp section. Self-hosted instances register their own HTTPS resource URLs.
 
 ## Phases
 

@@ -1,0 +1,6 @@
+# Dummy PEM headers used as plaintext in encryption tests, reviewed before publication.
+# Keep these exact historical fingerprints; never ignore a whole test file or key rule.
+3b651203ae038f87dd8db5f7323d793e70e82dc2:packages/crypto/src/crypto.test.ts:private-key:17
+3b651203ae038f87dd8db5f7323d793e70e82dc2:packages/db/src/rls.db.test.ts:private-key:169
+2bf83ba5a7da2e81ee9fc215edf815b4ca93db43:packages/db/src/rls.db.test.ts:private-key:161
+75d785324a9cc918d5268e0ff374c0d3cb081d84:packages/crypto/src/crypto.test.ts:private-key:17
