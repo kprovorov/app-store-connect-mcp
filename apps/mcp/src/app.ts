@@ -16,10 +16,8 @@ export const makeApp = (deps: McpDeps) => {
   return (
     new Hono()
       .get("/health", (c) => c.json({ ok: true }))
-      // Both paths are public. Clients look for the /mcp-suffixed one first (RFC 9728).
-      .get("/.well-known/oauth-protected-resource/mcp", (c) => c.json(metadata, 200, metadataHeaders))
       .get("/.well-known/oauth-protected-resource", (c) => c.json(metadata, 200, metadataHeaders))
-      .all("/mcp", async (c) => {
+      .all("/", async (c) => {
         const outcome = await deps.authenticate(c.req.raw);
         if (outcome.kind !== "authenticated") return unauthorized(deps.resourceUrl, outcome.kind);
         // Stateless: no session to resume a stream from, and nothing to delete.

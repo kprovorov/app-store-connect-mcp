@@ -22,27 +22,24 @@ describe("clerkIssuer", () => {
 });
 
 describe("protected resource metadata", () => {
-  it.each(["/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-protected-resource"])(
-    "%s names the configured resource and the Clerk issuer",
-    async (path) => {
-      const response = await test.app.request(`http://localhost:8788${path}`);
-      expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
-        resource: RESOURCE_URL,
-        authorization_servers: [ISSUER],
-        bearer_methods_supported: ["header"],
-        scopes_supported: ["profile", "email"],
-      });
-    },
-  );
+  it("names the configured root resource and the Clerk issuer", async () => {
+    const response = await test.app.request("/.well-known/oauth-protected-resource");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      resource: RESOURCE_URL,
+      authorization_servers: [ISSUER],
+      bearer_methods_supported: ["header"],
+      scopes_supported: ["profile", "email"],
+    });
+  });
 });
 
-describe("POST /mcp auth", () => {
+describe("root MCP auth", () => {
   it("answers 401 with a quoted resource_metadata challenge when there is no token", async () => {
     const { response } = await rpc(test.app, "tools/list", {}, null);
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
     );
   });
 
@@ -50,12 +47,20 @@ describe("POST /mcp auth", () => {
     const { response } = await rpc(test.app, "tools/list", {}, "oat_garbage");
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
+      'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
     );
   });
 
-  it("answers GET with 405 once authenticated, because the server is stateless", async () => {
-    const response = await test.app.request("/mcp", { headers: { authorization: `Bearer ${GOOD_TOKEN}` } });
+  it.each(["GET", "DELETE"])("answers unauthenticated %s with a root OAuth challenge", async (method) => {
+    const response = await test.app.request(RESOURCE_URL, { method });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toBe(
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
+    );
+  });
+
+  it.each(["GET", "DELETE"])("answers authenticated %s with 405, because the server is stateless", async (method) => {
+    const response = await test.app.request("/", { method, headers: { authorization: `Bearer ${GOOD_TOKEN}` } });
     expect(response.status).toBe(405);
     expect(response.headers.get("allow")).toBe("POST");
   });

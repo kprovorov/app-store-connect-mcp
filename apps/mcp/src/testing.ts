@@ -5,7 +5,7 @@ import { Effect, Layer, ManagedRuntime } from "effect";
 import { makeApp } from "./app";
 import { type Authenticate, type Caller, bearerToken } from "./auth";
 
-export const RESOURCE_URL = "https://mcp.example.com/mcp";
+export const RESOURCE_URL = "https://mcp.example.com";
 export const ISSUER = "https://example.clerk.accounts.dev";
 export const WEB_ORIGIN = "https://app.example.com";
 export const DATABASE_URL = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -54,7 +54,7 @@ export const rpc = async (
   params: Record<string, unknown> = {},
   token: string | null = GOOD_TOKEN,
 ) => {
-  const response = await app.request("/mcp", {
+  const response = await app.request("/", {
     method: "POST",
     headers: {
       "content-type": "application/json",
