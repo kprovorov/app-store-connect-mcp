@@ -170,7 +170,15 @@ export default function Home() {
       <footer className="border-t">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground sm:px-6">
           <span>App Store Connect MCP</span>
-          <span>Not affiliated with Apple.</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <a
+              href="https://github.com/kprovorov/app-store-connect-mcp"
+              className="rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+            >
+              GitHub
+            </a>
+            <span>Not affiliated with Apple.</span>
+          </div>
         </div>
       </footer>
     </div>
