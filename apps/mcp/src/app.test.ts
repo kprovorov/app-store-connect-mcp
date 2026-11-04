@@ -39,7 +39,7 @@ describe("root MCP auth", () => {
     const { response } = await rpc(test.app, "tools/list", {}, null);
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource", scope="profile email"',
     );
   });
 
@@ -47,7 +47,7 @@ describe("root MCP auth", () => {
     const { response } = await rpc(test.app, "tools/list", {}, "oat_garbage");
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
+      'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource", scope="profile email"',
     );
   });
 
@@ -55,7 +55,7 @@ describe("root MCP auth", () => {
     const response = await test.app.request(RESOURCE_URL, { method });
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"',
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource", scope="profile email"',
     );
   });
 

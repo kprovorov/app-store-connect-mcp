@@ -66,7 +66,7 @@ A session without an active org gets `403 org_required`. RLS decides who may wri
 Clerk is the OAuth authorization server, and `mcp` is the resource server.
 
 - `GET /.well-known/oauth-protected-resource` returns the resource URL and the Clerk issuer, which comes from the publishable key.
-- A request without a token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource"`. A bad token adds `error="invalid_token"`.
+- A request without a token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource", scope="profile email"`. A bad token adds `error="invalid_token"`. The scope hint and metadata share the same scope list.
 - Tokens are verified as Clerk OAuth access tokens. OAuth tokens carry no org, so `mcp` reads the user's memberships from the Clerk Backend API and caches them for 30 seconds. A tool sees every connection in every org the user belongs to.
 
 Set `MCP_DEV_ACCEPT_SESSION_TOKENS=true` to also accept Clerk session tokens. Then you can call `mcp` with a token from `clerk` or `sessions.getToken` and skip the OAuth flow. It is for local testing only.
