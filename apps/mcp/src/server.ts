@@ -6,12 +6,14 @@ import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } fr
 import type { ManagedRuntime } from "effect";
 import { callerOf } from "./auth";
 import { handlers, toolDefinitions } from "./registry";
+import { catalogPage } from "./operations";
 
 export type Services = Database | Crypto | AscClient;
 
 export interface ServerDeps {
   readonly runtime: ManagedRuntime.ManagedRuntime<Services, unknown>;
   readonly webOrigin: string;
+  readonly assetFetch?: typeof fetch;
 }
 
 export const createMcpServer = (deps: ServerDeps) => {
@@ -22,16 +24,23 @@ export const createMcpServer = (deps: ServerDeps) => {
       instructions:
         "Tools act on App Store Connect through API keys the user added in the web app. " +
         "Start with list_apps to find app ids. If a tool reports several connections, call list_connections and pass connection_id. " +
-        "asc_get reads any API path the named tools do not cover, and follows links.next for paging.",
+        "asc_find_operations searches all Apple API operations; asc_describe_operation returns their generated tool schemas. tools/list is paginated. " +
+        "upload_screenshot uses the current asset library. upload_asset transfers bytes to an existing reservation. " +
+        "asc_get follows links.next for Apple resource paging. Report chunks require expected_sha256 after the first chunk.",
     },
   );
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...toolDefinitions] }));
+  server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+    try { return catalogPage(toolDefinitions, request.params?.cursor); }
+    catch (error) { throw new McpError(ErrorCode.InvalidParams, String(error)); }
+  });
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const caller = callerOf(extra.authInfo);
     if (!caller) throw new McpError(ErrorCode.InvalidRequest, "Missing caller");
     const handler = handlers.get(request.params.name);
     if (!handler) throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${request.params.name}`);
-    return deps.runtime.runPromise(handler(request.params.arguments ?? {}, { caller, webOrigin: deps.webOrigin }));
+    const result = await deps.runtime.runPromise(handler(request.params.arguments ?? {}, { caller, webOrigin: deps.webOrigin, assetFetch: deps.assetFetch }));
+    if (Buffer.byteLength(JSON.stringify(result)) > 3.5 * 1024 * 1024) return { isError: true, content: [{ type: "text", text: JSON.stringify({ error: "response_too_large", message: "Use a smaller Apple page or fields selection. MCP responses are limited to 3.5 MiB." }) }] };
+    return result;
   });
   return server;
 };

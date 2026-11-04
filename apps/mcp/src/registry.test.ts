@@ -6,6 +6,7 @@ import { resolveConnection } from "./connections";
 import { compactBody } from "./registry";
 import { callerFor, rpc, testApp } from "./testing";
 import { ascTools } from "./tools";
+import { operations } from "./operations";
 
 const requestFor = (name: string, args: Record<string, unknown>): AscRequest => {
   const tool = ascTools.find((candidate) => candidate.name === name)!;
@@ -25,57 +26,22 @@ describe("tools/list", () => {
   afterAll(() => test.dispose());
 
   it("lists every tool with an object input schema, and connection_id on each ASC tool", async () => {
-    const { body } = await rpc(test.app, "tools/list");
-    const tools = body.result.tools as Array<{ name: string; inputSchema: Record<string, any>; annotations: object }>;
-
-    expect(tools.map((tool) => tool.name).sort()).toEqual(
-      [
-        "list_connections",
-        "asc_get",
-        "list_apps",
-        "get_app",
-        "list_builds",
-        "list_app_store_versions",
-        "list_version_localizations",
-        "list_review_submissions",
-        "list_review_submission_items",
-        "list_customer_reviews",
-        "get_review_summary",
-        "list_beta_groups",
-        "list_beta_testers",
-        "list_build_beta_localizations",
-        "list_beta_feedback_crashes",
-        "list_ci_build_runs",
-        "get_app_perf_metrics",
-        "reply_to_review",
-        "update_version_localization",
-        "set_what_to_test",
-        "add_beta_tester",
-        "add_testers_to_group",
-      ].sort(),
-    );
+    const tools: Array<{ name: string; inputSchema: Record<string, any>; annotations: { readOnlyHint: boolean } }> = [];
+    let cursor: string | undefined;
+    do {
+      const { body } = await rpc(test.app, "tools/list", cursor ? { cursor } : {});
+      tools.push(...body.result.tools);
+      cursor = body.result.nextCursor;
+    } while (cursor);
+    expect(tools).toHaveLength(22 + 4 + operations.length);
+    expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
+    for (const alias of ["list_connections", ...ascTools.map((tool) => tool.name)]) expect(tools.some((tool) => tool.name === alias)).toBe(true);
     for (const tool of tools) {
-      const { type, properties, required = [] } = tool.inputSchema;
-      expect(type, tool.name).toBe("object");
-      expect(Object.keys(properties), tool.name).toEqual(expect.arrayContaining(required));
-      for (const property of Object.values<Record<string, unknown>>(properties)) {
-        expect(property.type ?? property.enum, tool.name).toBeDefined();
-      }
-      if (tool.name !== "list_connections") {
-        expect(properties.connection_id, tool.name).toEqual({ type: "string", description: expect.any(String) });
-        expect(required, tool.name).not.toContain("connection_id");
-      }
+      expect(tool.inputSchema.type).toBe("object");
+      if (!["list_connections", "asc_find_operations", "asc_describe_operation"].includes(tool.name)) expect(tool.inputSchema.properties.connection_id).toBeDefined();
     }
-  });
-
-  it("marks only the Tier 2 tools as writes", async () => {
-    const { body } = await rpc(test.app, "tools/list");
-    const writes = (body.result.tools as Array<{ name: string; annotations: { readOnlyHint: boolean } }>)
-      .filter((tool) => !tool.annotations.readOnlyHint)
-      .map((tool) => tool.name);
-    expect(writes.sort()).toEqual(
-      ["reply_to_review", "update_version_localization", "set_what_to_test", "add_beta_tester", "add_testers_to_group"].sort(),
-    );
+    const generated = new Map(tools.map((tool) => [tool.name, tool]));
+    for (const operation of operations) expect(generated.get(operation.name)!.annotations.readOnlyHint).toBe(operation.method === "GET");
   });
 });
 

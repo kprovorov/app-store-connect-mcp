@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   AscClient,
   type AscApiError,
@@ -6,6 +7,7 @@ import {
   type AscNetworkError,
   type AscRateLimited,
   type AscResponse,
+  type AscRequest,
   type RateLimit,
 } from "@asc-mcp/asc";
 import type { DecryptError } from "@asc-mcp/crypto";
@@ -16,6 +18,10 @@ import type { Caller } from "./auth";
 import { type ConnectionChoice, resolveConnection, storedCredentials } from "./connections";
 import type { Services } from "./server";
 import { type AscTool, ascTools } from "./tools";
+import { AssetError } from "./assets";
+import { Ajv } from "ajv";
+import { discoverOperation, discoveryDefinitions, operationDefinitions, operationRequest, operations } from "./operations";
+import { uploadAsset, uploadDefinitions, uploadScreenshot } from "./uploads";
 
 export class InvalidArguments extends Data.TaggedError("InvalidArguments")<{ readonly message: string }> {}
 
@@ -24,6 +30,7 @@ export class ConnectionUnavailable extends Data.TaggedError("ConnectionUnavailab
 }> {}
 
 type ToolFailure =
+  | AssetError
   | InvalidArguments
   | ConnectionUnavailable
   | AscApiError
@@ -37,6 +44,7 @@ type ToolFailure =
 export interface CallContext {
   readonly caller: Caller;
   readonly webOrigin: string;
+  readonly assetFetch?: typeof fetch;
 }
 
 const text = (value: unknown): CallToolResult => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
@@ -81,6 +89,7 @@ const connectionMessage = (choice: ConnectionUnavailable["choice"], { caller, we
 const failures: {
   [Tag in ToolFailure["_tag"]]: (failure: Extract<ToolFailure, { _tag: Tag }>, context: CallContext) => CallToolResult;
 } = {
+  AssetError: (e) => errorText({ error: "asset_upload", message: e.message, stage: e.stage, image_id: e.image_id, details: e.details }),
   InvalidArguments: (e) => errorText({ error: "invalid_arguments", message: e.message }),
   ConnectionUnavailable: (e, context) => errorText(connectionMessage(e.choice, context)),
   AscApiError: (e) =>
@@ -148,17 +157,27 @@ export const compactBody = (body: unknown) => {
   };
 };
 
-const successResult = ({ status, rateLimit, body }: AscResponse): CallToolResult => {
+export const successResult = ({ status, rateLimit, body }: AscResponse, args: Record<string, unknown> = {}): CallToolResult => {
   switch (body.kind) {
     case "json":
       return text({ ...(compactBody(body.value) as object), ...rateLimitOf(rateLimit) });
     case "empty":
       return text({ ok: true, status, ...rateLimitOf(rateLimit) });
     case "bytes":
-      return errorText({
-        error: "unsupported_body",
-        message: `App Store Connect answered with ${body.contentType} (${body.value.length} bytes). Binary responses such as reports are not supported yet.`,
-      });
+      {
+        const sha256 = createHash("sha256").update(body.value).digest("hex");
+        const offset = Number(args.response_offset ?? 0);
+        const limit = Number(args.response_limit ?? 1048576);
+        if (!Number.isSafeInteger(offset) || offset < 0 || offset > body.value.length || !Number.isSafeInteger(limit) || limit < 1 || limit > 1048576) return errorText({ error: "invalid_arguments", message: "Invalid report byte range" });
+        if (offset > 0 && typeof args.expected_sha256 !== "string") return errorText({ error: "invalid_arguments", message: "Subsequent report chunks require expected_sha256 from the first result" });
+        if (args.expected_sha256 !== undefined && args.expected_sha256 !== sha256) return errorText({ error: "report_changed", message: "Apple returned different report bytes. Restart from offset 0." });
+        const bytes = body.value.subarray(offset, offset + limit);
+        const nextOffset = offset + bytes.length;
+        return { content: [
+          { type: "text", text: JSON.stringify({ status, mimeType: body.contentType, totalBytes: body.value.length, sha256, offset, bytes: bytes.length, ...(nextOffset < body.value.length ? { nextOffset } : {}), ...rateLimitOf(rateLimit) }) },
+          { type: "resource", resource: { uri: `asc-report://sha256/${sha256}?offset=${offset}`, mimeType: body.contentType, blob: Buffer.from(bytes).toString("base64") } },
+        ] };
+      }
   }
 };
 
@@ -174,13 +193,20 @@ const decodeArguments = (tool: AscTool<unknown>, args: Record<string, unknown>) 
     return { input, connectionId };
   });
 
-export const callAscTool = (tool: AscTool<unknown>, args: Record<string, unknown>, context: CallContext) =>
+export const withConnection = <A, E>(args: Record<string, unknown>, context: CallContext, run: (request: (value: AscRequest) => Effect.Effect<AscResponse, import("@asc-mcp/asc").AscRequestError>) => Effect.Effect<A, E>) =>
   Effect.gen(function* () {
-    const { input, connectionId } = yield* decodeArguments(tool, args);
-    const choice = resolveConnection(yield* listConnections(context.caller.claims), connectionId);
+    if (args.connection_id !== undefined && (typeof args.connection_id !== "string" || !args.connection_id)) return yield* new InvalidArguments({ message: "connection_id must be a nonempty string" });
+    const choice = resolveConnection(yield* listConnections(context.caller.claims), args.connection_id as string | undefined);
     if (!choice.ok) return yield* new ConnectionUnavailable({ choice });
     const credentials = yield* storedCredentials(choice.connection);
-    const response = yield* AscClient.use((client) => client.request(credentials, tool.toRequest(input)));
+    const client = yield* AscClient;
+    return yield* run((request) => client.request(credentials, request));
+  });
+
+export const callAscTool = (tool: AscTool<unknown>, args: Record<string, unknown>, context: CallContext) =>
+  Effect.gen(function* () {
+    const { input } = yield* decodeArguments(tool, args);
+    const response = yield* withConnection(args, context, (request) => request(tool.toRequest(input)));
     return successResult(response);
   }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))));
 
@@ -216,7 +242,7 @@ const definitionOf = (tool: AscTool<unknown>): Tool => {
   };
 };
 
-export const toolDefinitions: ReadonlyArray<Tool> = [listConnectionsTool, ...ascTools.map(definitionOf)];
+export const toolDefinitions: ReadonlyArray<Tool> = [listConnectionsTool, ...ascTools.map(definitionOf), ...discoveryDefinitions, ...uploadDefinitions, ...operationDefinitions];
 
 type Handler = (args: Record<string, unknown>, context: CallContext) => Effect.Effect<CallToolResult, never, Services>;
 
@@ -235,4 +261,19 @@ export const handlers: ReadonlyMap<string, Handler> = new Map<string, Handler>([
       ),
   ],
   ...ascTools.map((tool): [string, Handler] => [tool.name, (args, context) => callAscTool(tool, args, context)]),
+  ...discoveryDefinitions.map((tool): [string, Handler] => [tool.name, (args) => Effect.try({ try: () => text(discoverOperation(tool.name, args)), catch: (error) => new InvalidArguments({ message: String(error) }) }).pipe(Effect.catch((error) => Effect.succeed(errorText({ error: "invalid_arguments", message: error.message }))))]),
+  ...operations.map((operation): [string, Handler] => [operation.name, (args, context) => Effect.gen(function* () {
+    const appleRequest = yield* Effect.try({ try: () => operationRequest(operation, args), catch: (error) => new InvalidArguments({ message: String(error) }) });
+    const response = yield* withConnection(args, context, (request) => request(appleRequest));
+    return successResult(response, args);
+  }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))]),
+  ...uploadDefinitions.map((tool): [string, Handler] => {
+    const validate = new Ajv({ strict: false }).compile(tool.inputSchema);
+    return [tool.name, (args, context) => Effect.gen(function* () {
+      if (!validate(args)) return yield* new InvalidArguments({ message: JSON.stringify(validate.errors) });
+      return yield* withConnection<unknown, import("@asc-mcp/asc").AscRequestError | AssetError>(args, context, (request) =>
+        (tool.name === "upload_asset" ? uploadAsset(args, { request, fetch: context.assetFetch }) : uploadScreenshot(args, { request, fetch: context.assetFetch }))
+      ).pipe(Effect.map(text));
+    }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))];
+  }),
 ]);
