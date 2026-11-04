@@ -1,29 +1,14 @@
-import { Config, Context, Data, Effect, Layer, Redacted } from "effect";
+import { Config, Context, Effect, Layer, Redacted } from "effect";
 import { sql } from "drizzle-orm";
 import { type PostgresJsDatabase, drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { type RlsClaims, claimsJson } from "./claims";
+import { type DatabaseError, toDatabaseError } from "./database-error";
 import * as schema from "./schema";
 
+export { DatabaseError } from "./database-error";
+
 export type Tx = Parameters<Parameters<PostgresJsDatabase<typeof schema>["transaction"]>[0]>[0];
-
-/** `code` is the Postgres SQLSTATE when the failure came from the server. */
-export class DatabaseError extends Data.TaggedError("DatabaseError")<{
-  readonly code: string | undefined;
-  readonly message: string;
-}> {}
-
-// Keeps only SQLSTATE and message. Drizzle's error carries bound params (claims, ciphertext).
-const toDatabaseError = (error: unknown): DatabaseError => {
-  let current: unknown = error;
-  while (current instanceof Error) {
-    if (current instanceof postgres.PostgresError) {
-      return new DatabaseError({ code: current.code, message: current.message });
-    }
-    current = current.cause;
-  }
-  return new DatabaseError({ code: undefined, message: "Database request failed" });
-};
 
 export class Database extends Context.Service<
   Database,
