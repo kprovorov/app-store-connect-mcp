@@ -29,8 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/dashboard"
-          signUpFallbackRedirectUrl="/dashboard"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
           taskUrls={{ "choose-organization": "/choose-organization" }}
         >
           <Providers>{children}</Providers>
