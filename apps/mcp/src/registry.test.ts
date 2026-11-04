@@ -33,7 +33,7 @@ describe("tools/list", () => {
       tools.push(...body.result.tools);
       cursor = body.result.nextCursor;
     } while (cursor);
-    expect(tools).toHaveLength(22 + 4 + operations.length);
+    expect(tools).toHaveLength(22 + 6 + operations.length);
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
     for (const alias of ["list_connections", ...ascTools.map((tool) => tool.name)]) expect(tools.some((tool) => tool.name === alias)).toBe(true);
     for (const tool of tools) {
@@ -42,6 +42,12 @@ describe("tools/list", () => {
     }
     const generated = new Map(tools.map((tool) => [tool.name, tool]));
     for (const operation of operations) expect(generated.get(operation.name)!.annotations.readOnlyHint).toBe(operation.method === "GET");
+    expect(ascTools.filter((alias) => !generated.get(alias.name)!.annotations.readOnlyHint).map((alias) => alias.name).sort()).toEqual(["reply_to_review", "update_version_localization", "set_what_to_test", "add_beta_tester", "add_testers_to_group"].sort());
+    for (const alias of ascTools) {
+      const schema = generated.get(alias.name)!.inputSchema;
+      expect(schema.additionalProperties).toBe(false);
+      expect(schema.required ?? []).not.toContain("connection_id");
+    }
   });
 });
 

@@ -51,6 +51,21 @@ const idPath = (id: unknown) => {
 const checked = <A>(run: () => A) => Effect.try({ try: run, catch: (error) => new AssetError({ message: error instanceof Error ? error.message : "Invalid Apple asset response" }) });
 const asyncAsset = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: (error) => new AssetError({ message: error instanceof Error ? error.message : "Asset transfer failed" }) });
 
+const uploadFailure = (error: AscRequestError | AssetError) => {
+  switch (error._tag) {
+    case "AscApiError":
+      return { message: error.errors[0]?.detail ?? `Apple returned HTTP ${error.status}`, details: { status: error.status, errors: error.errors, rateLimit: error.rateLimit } };
+    case "AscRateLimited":
+      return { message: "Apple's API quota is exhausted. Retry after the indicated delay.", details: { error: error._tag, retryAfterSeconds: error.retryAfterSeconds, rateLimit: error.rateLimit } };
+    case "AscNetworkError":
+      return { message: "Could not reach App Store Connect. Retry the failed stage.", details: { error: error._tag } };
+    case "AssetError":
+      return { message: error.message, details: error.details };
+    default:
+      return { message: error.message || "Screenshot upload failed", details: { error: error._tag } };
+  }
+};
+
 export const uploadAsset = (args: Record<string, unknown>, context: UploadContext) => Effect.gen(function* () {
   const operation = operationsById.get(String(args.operation));
   if (!operation || operation.method !== "GET" || !/^\/v[1-9]\/[^/]+\/\{id\}$/.test(operation.path)) return yield* new AssetError({ message: "operation must be a catalog GET-by-id operation" });
@@ -98,14 +113,21 @@ export const uploadScreenshot = (args: Record<string, unknown>, context: UploadC
     stage = "processing";
     const deadline = Date.now() + Number(args.wait_seconds ?? 0) * 1000;
     let state = yield* checked(() => String(object(image.attributes).state));
-    while (["AWAITING_UPLOAD", "UPLOAD_COMPLETE"].includes(state) && Date.now() < deadline) {
+    while (state === "UPLOAD_COMPLETE" && Date.now() < deadline) {
       yield* Effect.sleep("1 second");
       const refreshed = yield* context.request({ method: "GET", path: `/v1/appAssetLibraryImages/${idPath(imageId)}`, scoped: true });
       image = yield* checked(() => data(refreshed));
       state = yield* checked(() => String(object(image.attributes).state));
     }
-    if (["AWAITING_UPLOAD", "UPLOAD_COMPLETE"].includes(state)) return { state: "processing", image_id: imageId, apple_state: state, next: "Call upload_screenshot with image_id and the same target, without file fields." };
-    if (!["PREPARE_FOR_SUBMISSION", "COMPLETE", "APPROVED"].includes(state)) return yield* new AssetError({ message: `Apple image processing state is ${state}`, details: image.attributes });
+    if (state === "AWAITING_UPLOAD") {
+      stage = "commit";
+      return yield* new AssetError({
+        message: "The image is not committed. Finish any failed transfer with upload_asset, then call appAssetLibraryImages_updateInstance with uploaded: true. Resume upload_screenshot after the commit succeeds, or create a new reservation.",
+        details: { apple_state: state, operation: "appAssetLibraryImages_updateInstance", path: { id: imageId }, body: { data: { type: "appAssetLibraryImages", id: imageId, attributes: { uploaded: true } } } },
+      });
+    }
+    if (state === "UPLOAD_COMPLETE") return { state: "processing", image_id: imageId, apple_state: state, next: "Call upload_screenshot with image_id and the same target, without file fields." };
+    if (!["PREPARE_FOR_SUBMISSION", "COMPLETE", "READY_FOR_REVIEW", "WAITING_FOR_REVIEW", "IN_REVIEW", "ACCEPTED", "APPROVED"].includes(state)) return yield* new AssetError({ message: `Apple image processing state is ${state}`, details: image.attributes });
     stage = "placement";
     const existing = yield* context.request({ method: "GET", path: `/v1/appStoreVersionLocalizations/${idPath(args.localization_id)}/placements`, query: { "filter[placementType]": "APP_SCREENSHOT", "filter[placementGroup]": String(args.placement_group), include: "image", limit: 200 }, scoped: true });
     const placements = (yield* checked(() => json(existing))).data;
@@ -117,5 +139,5 @@ export const uploadScreenshot = (args: Record<string, unknown>, context: UploadC
     const placement = yield* context.request({ method: "POST", path: "/v1/appAssetLibraryPlacements", body: { data: { type: "appAssetLibraryPlacements", attributes: { placementType: "APP_SCREENSHOT", placementGroup: args.placement_group }, relationships: { image: { data: { type: "appAssetLibraryImages", id: imageId } }, appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: args.localization_id } } } } } });
     const placed = yield* checked(() => data(placement));
     return { state: "placed", image_id: imageId, placement_id: placed.id };
-  }).pipe(Effect.catch((error) => Effect.fail(new AssetError({ message: error._tag === "AscApiError" ? error.errors[0]?.detail ?? `Apple returned HTTP ${error.status}` : error.message || "Screenshot upload failed", stage, image_id: imageId, details: error._tag === "AscApiError" ? { status: error.status, errors: error.errors, rateLimit: error.rateLimit } : error instanceof AssetError ? error.details : { error: error._tag } }))));
+  }).pipe(Effect.catch((error) => Effect.fail(new AssetError({ ...uploadFailure(error), stage, image_id: imageId }))));
 };

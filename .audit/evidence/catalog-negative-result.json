@@ -1,0 +1,135 @@
+{
+  "generated_sha256": "3d61125865b06373d88c0b88d6b1afc5a55ea5c4436c7d706ba88eee4921fe73",
+  "compiled": 1303,
+  "compilationErrors": [],
+  "results": [
+    {
+      "label": "required path rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data must have required property 'path'"
+    },
+    {
+      "label": "wrong path type rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/path/id must be string"
+    },
+    {
+      "label": "required query rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data must have required property 'query'"
+    },
+    {
+      "label": "required array query string rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/query/filter[id] must be array"
+    },
+    {
+      "label": "valid required array query accepted",
+      "accept": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "label": "unknown query rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/query must NOT have additional properties"
+    },
+    {
+      "label": "query limit above spec max rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/query/limit must be <= 200"
+    },
+    {
+      "label": "query enum rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/query/filter[processingState]/0 must be equal to one of the allowed values"
+    },
+    {
+      "label": "open Apple body fields and nullable accepted",
+      "accept": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "label": "JSON body preserved",
+      "pass": true
+    },
+    {
+      "label": "body type enum rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/body/data/type must be equal to one of the allowed values"
+    },
+    {
+      "label": "missing body attributes rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/body/data must have required property 'attributes'"
+    },
+    {
+      "label": "asset placement anyOf rejects missing target",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/body/data/relationships must have required property 'appEventLocalization'; data/body/data/relationships must have required property 'appStoreVersionLocalization'; data/body/data/relationships must have required property 'appCustomProductPageLocalization'; data/body/data/relationships must have required property 'appStoreVersionExperimentTreatmentLocalization'; data/body/data/relationships must have required property 'appEventLocalization'; data/body/data/relationships must have required property 'video'; data/body/data/relationships must have required property 'appCustomProductPageLocalization'; data/body/data/relationships must have required property 'appStoreVersionExperimentTreatmentLocalization'; data/body/data must match a schema in anyOf"
+    },
+    {
+      "label": "asset placement anyOf accepts image and localization",
+      "accept": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "label": "oneOf accepts matching price resource",
+      "accept": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "label": "oneOf rejects unknown included type",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/body/included/0 must have required property 'attributes'; data/body/included/0/type must be equal to one of the allowed values; data/body/included/0 must have required property 'attributes'; data/body/included/0 must match exactly one schema in oneOf"
+    },
+    {
+      "label": "every generated tool reached once through pagination",
+      "pass": true,
+      "pages": 27,
+      "maxBytes": 119050
+    },
+    {
+      "label": "dot segment path rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/path/id must match pattern \"^(?!\\.{1,2}$)\""
+    },
+    {
+      "label": "empty path id rejected",
+      "accept": false,
+      "actual": false,
+      "pass": true,
+      "error": "Error: data/path/id must NOT have fewer than 1 characters"
+    }
+  ],
+  "pathCases": {
+    "status": "rechecked as negative fixtures"
+  }
+}

@@ -100,6 +100,8 @@ The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only s
 
 `tools/list` returns at most 50 tools and 1 MiB per page. Follow `nextCursor` until it is absent. `asc_find_operations` searches the complete catalog without listing every tool. `asc_describe_operation` accepts an Apple operation ID or generated tool name and returns its input schema. Long names use a stable SHA-256 suffix and stay within 40 characters. Search and describe return the actual generated names.
 
+Clients that limit tool discovery can call `asc_read_operation` for GET or `asc_write_operation` for mutations. Both appear on the first page. Supply `operation` with the Apple operation ID, `arguments` matching its generated schema, and an optional outer `connection_id`. These fallbacks use the same operation validation, connection access, and result handling as the generated tools.
+
 Generated inputs keep Apple's parameter and JSON:API field names. For example, find `apps_getInstance`, then call the returned tool name with:
 
 ```json
@@ -123,6 +125,8 @@ See [the pinned specification](apps/mcp/spec/README.md) for provenance and regen
 Inline files support at most 2 MiB decoded. For larger files, replace `content_base64` with `source_url`. Source URLs must use a public HTTPS hostname on port 443, return the file directly without redirects, and contain at most 20 MiB. The server pins a public DNS address, verifies TLS for the original hostname, and forwards no credentials. Local filesystem paths are not accepted by the hosted server.
 
 A successful result has `state: "placed"`, `image_id`, and `placement_id`. If processing is still pending, the result has `state: "processing"`. Call `upload_screenshot` again with the same target and `image_id`, without file fields. Continuation verifies that the image belongs to the app's library and reuses an existing matching placement. Errors retain the stage and image ID after reservation, so an agent can inspect or repair the reservation with the generated operations. A transfer failure requires re-upload through `upload_asset` or a new reservation. `upload_screenshot` continuation handles processing and placement only.
+
+An image still in `AWAITING_UPLOAD` returns a commit-stage error with recovery arguments. Complete any unfinished transfer with `upload_asset`, then call `appAssetLibraryImages_updateInstance` with `uploaded: true`. Only committed images in `UPLOAD_COMPLETE` are reported as processing. Resume `upload_screenshot` after the commit succeeds.
 
 The tool preserves existing screenshots. To set their display order, find `appAssetLibraryPlacementOrderingRequests_createInstance` and use the schema returned by `asc_describe_operation`. Its body identifies the localization and `placementGroup`, then lists placement IDs in `relationships.orderedPlacements.data` in display order. Uploading and placing screenshots does not submit the parent version for review.
 

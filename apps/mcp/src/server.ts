@@ -25,6 +25,7 @@ export const createMcpServer = (deps: ServerDeps) => {
         "Tools act on App Store Connect through API keys the user added in the web app. " +
         "Start with list_apps to find app ids. If a tool reports several connections, call list_connections and pass connection_id. " +
         "asc_find_operations searches all Apple API operations; asc_describe_operation returns their generated tool schemas. tools/list is paginated. " +
+        "asc_read_operation and asc_write_operation execute by operation ID when the client limits discovered tools. " +
         "upload_screenshot uses the current asset library. upload_asset transfers bytes to an existing reservation. " +
         "asc_get follows links.next for Apple resource paging. Report chunks require expected_sha256 after the first chunk.",
     },

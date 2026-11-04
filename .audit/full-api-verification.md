@@ -9,13 +9,15 @@ The goal is callable coverage of every operation in Apple's pinned App Store Con
 - Every generated input schema compiles. Runtime tests cover required parameters, enums, nullable values, unions, open Apple body objects, and safe path segments.
 - `pnpm typecheck` passes all eight configured tasks.
 - `pnpm lint` passes both configured application lint tasks. The backend packages do not define separate lint tasks.
-- `pnpm test` passes 146 tests across five package tasks. The unchanged crypto package reuses its Turbo cache; the affected packages execute their tests.
-- `DATABASE_URL=postgresql://postgres@127.0.0.1:55485/asc_mcp_test pnpm test:db` passes all 35 tests in the database, API, and MCP packages against a disposable PostgreSQL 17 cluster with repository migrations.
+- `pnpm test` passes 147 tests across five package tasks. The unchanged crypto package reuses its Turbo cache; the affected packages execute their tests. This run followed the source freeze and review fixes.
+- `DATABASE_URL=postgresql://postgres@127.0.0.1:55485/asc_mcp_test pnpm test:db` passes all 39 tests in the database, API, and MCP packages against a disposable PostgreSQL 17 cluster with repository migrations. The MCP suite includes 19 tests.
 - The upload integration suite uses an actual local HTTP server. It verifies generated GET, POST, PATCH, and DELETE requests, exact upload byte slices, no API authorization on storage requests, upload before commit, processing continuation, ownership checks, placement reuse, actionable Apple errors, transfer failures, and CSV responses.
-- `pnpm build` passes all four production builds with the synthetic public configuration used by CI. The MCP bundle is about 3.77 MB.
+- `pnpm build` passes all four production builds with the synthetic public configuration used by CI. The initial run executed all four builds; the run after review fixes rebuilt MCP and reused the unchanged application builds. The MCP bundle is about 3.77 MB.
 - A smoke check imports the built MCP artifact with synthetic configuration. OAuth metadata returns 200, and an unauthenticated tools/list call returns 401.
 - `pnpm audit --audit-level high` passes with no high or critical findings. It reports one low and one moderate advisory.
 - `gitleaks dir apps/mcp/spec --redact=100 --no-banner` reports no secrets in the pinned specification.
+- `gitleaks git . --log-opts='--all --full-history' --redact=100 --no-banner` reports no secrets across 83 commits at the initial implementation head.
+- From `apps/mcp`, `node --import tsx ../../.audit/evidence/catalog-negative.ts` compiles every schema and passes all 19 preserved runtime witnesses. The result is kept in `.audit/evidence/catalog-negative-result.json`.
 
 ## Limits and live gaps
 
@@ -27,4 +29,4 @@ The coverage boundary is the pinned App Store Connect specification. Apple's sep
 
 ## Review
 
-The independent design review and catalog audit are preserved in `.audit/evidence`. Final code and decision-trail review is pending.
+The independent design review, catalog audit, and code review are preserved in `.audit/evidence`. The code review at `d47ae95` requested changes for uncommitted screenshot continuation. The regression is fixed and verified through actual HTTP integration tests. Review hardening also covers processed states, retry information, Content-Length, operation-ID fallbacks, deterministic ordering, script type checks, and CI source correspondence. Focused review of those fixes is pending.

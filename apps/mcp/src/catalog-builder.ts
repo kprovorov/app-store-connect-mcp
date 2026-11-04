@@ -119,5 +119,5 @@ export const buildCatalog = (spec: Specification): Operation[] => {
       output.push({ name, operationId: operation.operationId, method: method.toUpperCase() as Operation["method"], path, deprecated: operation.deprecated ?? false, inputSchema, responseMedia });
     }
   }
-  return output.sort((a, b) => a.operationId.localeCompare(b.operationId, "en"));
+  return output.sort((a, b) => a.operationId < b.operationId ? -1 : a.operationId > b.operationId ? 1 : 0);
 };

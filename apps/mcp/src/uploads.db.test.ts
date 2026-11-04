@@ -21,6 +21,9 @@ let pending = false;
 let wrongApp = false;
 let reused = false;
 let foreignImage = false;
+let resumeState: string | undefined;
+let quotaExhausted = false;
+let networkFails = false;
 const calls: { method: string; path: string; authorization: string; body: Buffer; accept: string }[] = [];
 const image = (state: string) => ({ data: { type: "appAssetLibraryImages", id: "image-a", attributes: { state } } });
 
@@ -43,7 +46,8 @@ beforeAll(async () => {
     else if (path === "/v1/apps/app-a/assetLibrary") result = { data: { id: "library-a" } };
     else if (path === "/v1/appAssetLibraries/library-a/images") result = { data: foreignImage ? [] : [{ id: "image-a" }] };
     else if (path === "/v1/appAssetLibraryImages" && method === "POST") {
-      if (reservationFails) { response.statusCode = 403; result = { errors: [{ status: "403", code: "FORBIDDEN", title: "No access", detail: "The key cannot manage assets." }] }; }
+      if (quotaExhausted) { response.statusCode = 429; response.setHeader("retry-after", "120"); response.setHeader("x-rate-limit", "user-hour-lim:3500;user-hour-rem:0;"); result = { errors: [] }; }
+      else if (reservationFails) { response.statusCode = 403; result = { errors: [{ status: "403", code: "FORBIDDEN", title: "No access", detail: "The key cannot manage assets." }] }; }
       else result = { data: { id: "image-a", attributes: { fileSize: file.length, state: "AWAITING_UPLOAD", uploadOperations: [
         { method: "PUT", url: "https://store-001.blobstore.apple.com/storage?part=1", offset: 0, length: 3, requestHeaders: [{ name: "Content-Type", value: "image/png" }] },
         { method: "PUT", url: "https://store-001.blobstore.apple.com/storage?part=2", offset: 3, length: 5, requestHeaders: [] },
@@ -51,7 +55,7 @@ beforeAll(async () => {
     } else if (path === "/v1/appScreenshots/reservation-a") result = { data: { id: "reservation-a", attributes: { fileSize: file.length, uploadOperations: [
       { method: "PUT", url: "https://store-001.blobstore.apple.com/storage?part=all", offset: 0, length: file.length, requestHeaders: [] },
     ] } } };
-    else if (path === "/v1/appAssetLibraryImages/image-a") result = image(pending ? "UPLOAD_COMPLETE" : "PREPARE_FOR_SUBMISSION");
+    else if (path === "/v1/appAssetLibraryImages/image-a") result = image(pending ? "UPLOAD_COMPLETE" : resumeState ?? "PREPARE_FOR_SUBMISSION");
     else if (path === "/v1/appStoreVersionLocalizations/locale-a/placements") result = { data: reused ? [{ id: "placement-a", relationships: { image: { data: { id: "image-a" } } } }] : [] };
     else if (path === "/v1/appAssetLibraryPlacements") result = { data: { id: "placement-a" } };
     else if (path.endsWith("/values")) { response.setHeader("content-type", "text/csv"); response.end("one,two\n1,2\n"); return; }
@@ -61,6 +65,7 @@ beforeAll(async () => {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Fixture did not start");
   const fixtureFetch = ((input: string | URL | Request, init?: RequestInit) => {
+    if (networkFails) return Promise.reject(new Error("Synthetic connection failure"));
     const url = new URL(String(input));
     return globalThis.fetch(`http://127.0.0.1:${address.port}${url.pathname}${url.search}`, init);
   }) as typeof fetch;
@@ -78,7 +83,7 @@ afterAll(async () => {
   await app?.dispose();
   await new Promise<void>((resolve, reject) => server?.close((error) => error ? reject(error) : resolve()));
 });
-beforeEach(() => { calls.length = 0; storageFails = false; reservationFails = false; pending = false; wrongApp = false; reused = false; foreignImage = false; });
+beforeEach(() => { calls.length = 0; storageFails = false; reservationFails = false; pending = false; wrongApp = false; reused = false; foreignImage = false; resumeState = undefined; quotaExhausted = false; networkFails = false; });
 const call = async (name: string, args: Record<string, unknown>) => {
   const { body } = await rpc(app.app, "tools/call", { name, arguments: args });
   return { ...body.result, value: JSON.parse(body.result.content[0].text) };
@@ -86,6 +91,26 @@ const call = async (name: string, args: Record<string, unknown>) => {
 const screenshot = { app_id: "app-a", localization_id: "locale-a", placement_group: "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", file_name: "home.png", content_base64: file.toString("base64") };
 
 describe("generated operations and uploads over HTTP", () => {
+  it("executes operations through first-page fallbacks with the same validation and connection access", async () => {
+    const first = await rpc(app.app, "tools/list");
+    expect(first.body.result.tools.map((tool: { name: string }) => tool.name)).toEqual(expect.arrayContaining(["asc_read_operation", "asc_write_operation"]));
+    const read = await call("asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } }, connection_id: connectionId });
+    expect(read.isError).not.toBe(true);
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/v1/apps/app-a" });
+    const write = await call("asc_write_operation", { operation: "bundleIds_deleteInstance", arguments: { path: { id: "bundle-a" } } });
+    expect(write.isError).not.toBe(true);
+    expect(calls[1]).toMatchObject({ method: "DELETE", path: "/v1/bundleIds/bundle-a" });
+    const count = calls.length;
+    for (const [name, args] of [
+      ["asc_read_operation", { operation: "bundleIds_deleteInstance", arguments: { path: { id: "bundle-a" } } }],
+      ["asc_write_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } } }],
+      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: ".." } } }],
+      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } }, connection_id: "another-user-connection" }],
+      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" }, connection_id: connectionId } }],
+    ] as const) expect((await call(name, args)).isError).toBe(true);
+    expect(calls).toHaveLength(count);
+  });
+
   it("executes generated methods with validation before network access", async () => {
     const get = operations.find((operation) => operation.operationId === "apps_getInstance")!;
     await call(get.name, { path: { id: "a/b" }, query: { "fields[apps]": ["name", "bundleId"] } });
@@ -134,6 +159,41 @@ describe("generated operations and uploads over HTTP", () => {
     const next = await call("upload_screenshot", { app_id: "app-a", localization_id: "locale-a", placement_group: screenshot.placement_group, image_id: "image-a" });
     expect(next.value).toMatchObject({ state: "placed", placement_id: "placement-a", reused: true });
     expect(calls.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  it("returns commit recovery instructions instead of repeatedly polling an uncommitted image", async () => {
+    resumeState = "AWAITING_UPLOAD";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await call("upload_screenshot", { app_id: "app-a", localization_id: "locale-a", placement_group: screenshot.placement_group, image_id: "image-a", wait_seconds: 30 });
+      expect(result.isError).toBe(true);
+      expect(result.value).toMatchObject({ error: "asset_upload", stage: "commit", image_id: "image-a", details: { apple_state: "AWAITING_UPLOAD", operation: "appAssetLibraryImages_updateInstance", body: { data: { id: "image-a", attributes: { uploaded: true } } } } });
+    }
+    expect(calls.every((request) => request.method === "GET")).toBe(true);
+    expect(calls.some((request) => request.path.endsWith("/placements"))).toBe(false);
+  });
+
+  it("reuses placements for processed images throughout their review lifecycle", async () => {
+    reused = true;
+    for (const state of ["READY_FOR_REVIEW", "WAITING_FOR_REVIEW", "IN_REVIEW", "ACCEPTED", "APPROVED"]) {
+      resumeState = state;
+      const result = await call("upload_screenshot", { app_id: "app-a", localization_id: "locale-a", placement_group: screenshot.placement_group, image_id: "image-a" });
+      expect(result.isError, state).not.toBe(true);
+      expect(result.value).toMatchObject({ state: "placed", placement_id: "placement-a", reused: true });
+    }
+    expect(calls.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  it("preserves upload progress on terminal processing failures and retry details on quota failures", async () => {
+    resumeState = "FAILED";
+    const failed = await call("upload_screenshot", { app_id: "app-a", localization_id: "locale-a", placement_group: screenshot.placement_group, image_id: "image-a" });
+    expect(failed.value).toMatchObject({ error: "asset_upload", stage: "processing", image_id: "image-a", details: { state: "FAILED" } });
+    resumeState = undefined; quotaExhausted = true;
+    const limited = await call("upload_screenshot", screenshot);
+    expect(limited.value).toMatchObject({ error: "asset_upload", stage: "reserve", details: { error: "AscRateLimited", retryAfterSeconds: 120, rateLimit: { limit: 3500, remaining: 0 } } });
+    quotaExhausted = false; networkFails = true;
+    const disconnected = await call("upload_screenshot", screenshot);
+    expect(disconnected.value).toMatchObject({ error: "asset_upload", stage: "ownership", details: { error: "AscNetworkError" } });
+    expect(disconnected.value.message).toContain("Could not reach");
   });
 
   it("fails closed on another app or library and retains Apple's actionable errors", async () => {

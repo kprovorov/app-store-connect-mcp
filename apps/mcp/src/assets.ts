@@ -100,10 +100,14 @@ export const uploadPlan = (body: unknown, byteLength: number): UploadOperation[]
     if (part.method !== "PUT" || !Number.isSafeInteger(part.offset) || !Number.isSafeInteger(part.length) || Number(part.offset) < 0 || Number(part.length) < 1 || Number(part.offset) + Number(part.length) > byteLength) throw new Error("Invalid Apple upload byte range");
     if (part.requestHeaders !== undefined && !Array.isArray(part.requestHeaders)) throw new Error("Invalid Apple upload headers");
     const headers = (part.requestHeaders ?? []) as unknown[];
-    const checked = headers.map((value) => {
+    const checked = headers.flatMap((value) => {
       const header = record(value);
-      if (typeof header.name !== "string" || typeof header.value !== "string" || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(header.name) || /[\r\n]/.test(header.value) || ["authorization", "proxy-authorization", "cookie", "host", "connection", "transfer-encoding", "content-length"].includes(header.name.toLowerCase())) throw new Error("Unsafe Apple upload header");
-      return { name: header.name, value: header.value };
+      if (typeof header.name !== "string" || typeof header.value !== "string" || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(header.name) || /[\r\n]/.test(header.value) || ["authorization", "proxy-authorization", "cookie", "host", "connection", "transfer-encoding"].includes(header.name.toLowerCase())) throw new Error("Unsafe Apple upload header");
+      if (header.name.toLowerCase() === "content-length") {
+        if (!/^\d+$/.test(header.value) || Number(header.value) !== part.length) throw new Error("Apple upload Content-Length does not match the byte range");
+        return [];
+      }
+      return [{ name: header.name, value: header.value }];
     });
     return { method: "PUT", url: part.url, offset: Number(part.offset), length: Number(part.length), requestHeaders: checked };
   }).sort((a, b) => a.offset - b.offset);

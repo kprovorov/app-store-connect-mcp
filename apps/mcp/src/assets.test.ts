@@ -40,6 +40,14 @@ describe("Apple-issued raw upload plans", () => {
     }
   });
 
+  it("lets fetch set Content-Length for an Apple header that matches the byte range", () => {
+    const body = reservation();
+    body.data.attributes.uploadOperations[0]!.requestHeaders.push({ name: "Content-Length", value: "3" });
+    expect(uploadPlan(body, bytes.length)[0]!.requestHeaders).toEqual([{ name: "Content-Type", value: "image/png" }]);
+    body.data.attributes.uploadOperations[0]!.requestHeaders[1]!.value = "4";
+    expect(() => uploadPlan(body, bytes.length)).toThrow("Content-Length");
+  });
+
   it("rejects hostile destinations, headers, size mismatch, overlap, and gaps before fetch", () => {
     const variants = [
       (body: ReturnType<typeof reservation>) => { body.data.attributes.fileSize++; },

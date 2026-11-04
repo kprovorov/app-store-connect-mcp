@@ -53,3 +53,5 @@ Prove It Works shaped this audit. It compiled the actual generated schemas and e
 ## Durable rerun
 
 The parent preserved the independent source comparison as `.audit/evidence/catalog-independent.py` and made its paths relative to this repository. `python3 .audit/evidence/catalog-independent.py` passed against the same generated catalog checksum. Runtime validation witnesses also live in `apps/mcp/src/operations.test.ts`.
+
+After review, codepoint sorting replaced locale-dependent sorting. The catalog checksum is now `3d61125865b06373d88c0b88d6b1afc5a55ea5c4436c7d706ba88eee4921fe73`. Names, schemas, and operation coverage remain unchanged. The original audit identified the earlier artifact correctly. The same-family conversion comparison establishes correspondence only. All 19 runtime cases are preserved in `catalog-negative.ts` beside this report, with their rerun output in `catalog-negative-result.json`.
