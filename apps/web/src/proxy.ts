@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 
 // Everything else is the dashboard and needs a session with an organization.
 // `/choose-organization` must stay public: pending sessions are sent there.
-const isPublic = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/choose-organization(.*)"]);
+const isPublic = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/choose-organization(.*)",
+  "/opengraph-image",
+  "/twitter-image",
+]);
 
 export default clerkMiddleware(
   async (auth, req) => {
