@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { resourceAudiences } from "./auth";
 import { clerkIssuer } from "./config";
 import { GOOD_TOKEN, ISSUER, RESOURCE_URL, callerFor, rpc, testApp } from "./testing";
 
@@ -19,6 +20,17 @@ describe("clerkIssuer", () => {
     "rejects %s",
     (key) => expect(clerkIssuer(key)).toBeUndefined(),
   );
+});
+
+describe("resourceAudiences", () => {
+  it("accepts a bare origin with and without the trailing slash clients add", () => {
+    expect(resourceAudiences("https://mcp.example.com")).toEqual(["https://mcp.example.com", "https://mcp.example.com/"]);
+  });
+
+  it("keeps a single audience when the URL is already canonical", () => {
+    expect(resourceAudiences("https://mcp.example.com/")).toEqual(["https://mcp.example.com/"]);
+    expect(resourceAudiences("https://example.com/mcp")).toEqual(["https://example.com/mcp"]);
+  });
 });
 
 describe("protected resource metadata", () => {

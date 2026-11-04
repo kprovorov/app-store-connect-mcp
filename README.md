@@ -79,7 +79,7 @@ curl -X POST http://localhost:8788 \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Set `MCP_RESOURCE_URL`, the web app's `NEXT_PUBLIC_MCP_URL`, and Clerk's `resource_url` to exactly `https://mcp.ascmcp.dev`. Resource identifiers are preserved as configured: adding a trailing slash changes the OAuth audience. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
+The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Set `MCP_RESOURCE_URL`, the web app's `NEXT_PUBLIC_MCP_URL`, and Clerk's `resource_url` to exactly `https://mcp.ascmcp.dev`. Resource identifiers are preserved as configured: adding a trailing slash changes the OAuth audience. Some clients still send it: Claude Code requests `resource=https://mcp.ascmcp.dev/`. So Clerk registers both spellings, and the server accepts a token for either one. Rejected tokens are logged with Clerk's reason, never the token. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
 `src/tools.ts` is the tool catalog. Each tool is a row with an Effect Schema input, MCP annotations, and a pure `toRequest` that returns the App Store Connect method, path, query, and body. `src/registry.ts` adds the optional `connection_id` argument to every tool, picks the connection, decrypts the key, calls Apple, and turns results and errors into tool output. To add a tool, add a row. `asc_get` covers any read the rows do not, with a token scoped to that one request.
 
@@ -106,4 +106,4 @@ Environment variables per project:
 
 Apply migrations to the hosted database with `supabase link --project-ref <ref>` and then `supabase db push`. Then check that `postgres` can switch to the app role: `set role app_user; select 1;` in the SQL editor.
 
-The MCP URL is registered in Clerk as an OAuth resource (Clerk `configure_mcp_server`), so Clerk issues tokens with that audience.
+The MCP URL is registered in Clerk as an OAuth resource (Clerk `configure_mcp_server`) twice: `https://mcp.ascmcp.dev` and `https://mcp.ascmcp.dev/`. Clerk issues each token with the audience the client asked for.

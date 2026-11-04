@@ -34,6 +34,15 @@ export const metadataUrl = (resourceUrl: string) => {
   return new URL(`/.well-known/oauth-protected-resource${resource.pathname.replace(/\/$/, "")}`, resource.origin).href;
 };
 
+/**
+ * Token audiences accepted for a resource. Clients that build the RFC 8707 `resource` parameter
+ * through `URL.href` (Claude Code does) send a bare origin with a trailing slash, and Clerk treats
+ * that as a separate resource with its own audience. Both spellings are registered in Clerk.
+ */
+export const resourceAudiences = (resourceUrl: string): ReadonlyArray<string> => [
+  ...new Set([resourceUrl, new URL(resourceUrl).href]),
+];
+
 const OAUTH_SCOPES = ["profile", "email"];
 
 export const protectedResourceMetadata = (resourceUrl: string, issuer: string) => ({
@@ -72,8 +81,8 @@ export const clerkAuthenticate = (options: {
   readonly secretKey: string;
   readonly publishableKey: string;
   readonly acceptSessionTokens: boolean;
-  /** Set to the MCP resource URL to reject tokens Clerk issued for other resources. */
-  readonly audience: string | undefined;
+  /** Set to the MCP resource's audiences to reject tokens Clerk issued for other resources. */
+  readonly audience: ReadonlyArray<string> | undefined;
 }): Authenticate => {
   const clerk = createClerkClient({ secretKey: options.secretKey, publishableKey: options.publishableKey });
   const acceptsToken: Array<"oauth_token" | "session_token"> = options.acceptSessionTokens
@@ -102,9 +111,13 @@ export const clerkAuthenticate = (options: {
     if (!token) return { kind: "missing" };
     const state = await clerk.authenticateRequest(headersOnly(request), {
       acceptsToken,
-      ...(options.audience ? { audience: options.audience } : {}),
+      ...(options.audience ? { audience: [...options.audience] } : {}),
     });
-    if (!state.isAuthenticated) return { kind: "invalid" };
+    if (!state.isAuthenticated) {
+      // The reason says why Clerk refused the token (audience mismatch, expired, revoked). Never log the token.
+      console.warn("mcp: rejected bearer token", { reason: state.reason, message: state.message });
+      return { kind: "invalid" };
+    }
     const auth = state.toAuth();
     if (!auth.userId || !isUserId(auth.userId)) return { kind: "invalid" };
     const orgs = await orgsOf(auth.userId);
