@@ -13,7 +13,7 @@ const steps = [
   },
   {
     title: "Add the MCP URL to your agent",
-    body: "Paste one URL into Claude Code, Cursor, VS Code, or Claude.ai. The first call opens a browser so you can sign in.",
+    body: "Paste one URL into Claude, ChatGPT, Codex, Cursor, VS Code, or any client that supports remote MCP servers. The first call opens a browser so you can sign in.",
   },
 ];
 
@@ -111,8 +111,8 @@ export default function Home() {
               Let your AI agent work in App Store Connect.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-pretty text-muted-foreground">
-              A hosted MCP server for App Store Connect. Add your API key once, and Claude Code, Cursor, VS Code, or
-              Claude.ai can check builds, answer reviews, run TestFlight, and edit your store listing.
+              A hosted MCP server for App Store Connect. Add your API key once, and Claude, ChatGPT, Codex, Cursor, or
+              any MCP client can check builds, answer reviews, run TestFlight, and edit your store listing.
             </p>
             <div className="mt-8">
               <HeroActions />
@@ -170,7 +170,15 @@ export default function Home() {
       <footer className="border-t">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground sm:px-6">
           <span>App Store Connect MCP</span>
-          <span>Not affiliated with Apple.</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <a
+              href="https://github.com/kprovorov/app-store-connect-mcp"
+              className="rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+            >
+              GitHub
+            </a>
+            <span>Not affiliated with Apple.</span>
+          </div>
         </div>
       </footer>
     </div>
