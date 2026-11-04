@@ -15,9 +15,15 @@ const PublishableKey = Schema.String.pipe(
   Schema.check(Schema.makeFilter((key: string) => clerkIssuer(key) !== undefined || "not a Clerk publishable key")),
 );
 
+// OAuth resource identifiers must match Clerk's registration exactly, including a trailing slash.
+// Parsing through Config.URL would add a slash to a bare origin.
+const ResourceUrl = Schema.String.pipe(
+  Schema.check(Schema.makeFilter((url: string) => URL.canParse(url) || "not a URL")),
+);
+
 export const McpConfig = Config.all({
   port: Config.Port("PORT").pipe(Config.withDefault(8788)),
-  resourceUrl: Config.URL("MCP_RESOURCE_URL").pipe(Config.map((url) => url.href)),
+  resourceUrl: Config.schema(ResourceUrl, "MCP_RESOURCE_URL"),
   webOrigin: Config.URL("WEB_ORIGIN").pipe(Config.map((url) => url.origin)),
   clerkSecretKey: Config.Redacted("CLERK_SECRET_KEY"),
   clerkPublishableKey: Config.schema(PublishableKey, "CLERK_PUBLISHABLE_KEY"),

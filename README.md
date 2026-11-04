@@ -61,25 +61,25 @@ A session without an active org gets `403 org_required`. RLS decides who may wri
 
 ## mcp
 
-`apps/mcp` is the MCP server agents connect to, at `MCP_RESOURCE_URL` (locally `http://localhost:8788/mcp`). It speaks stateless Streamable HTTP. `POST /mcp` answers JSON, and `GET` and `DELETE` answer `405`.
+`apps/mcp` is the MCP server agents connect to, at the domain root: `https://mcp.ascmcp.dev` (locally `http://localhost:8788`). It speaks stateless Streamable HTTP. `POST /` answers JSON, and authenticated `GET /` and `DELETE /` answer `405`.
 
 Clerk is the OAuth authorization server, and `mcp` is the resource server.
 
-- `GET /.well-known/oauth-protected-resource/mcp` (and the same path without `/mcp`) returns the resource URL and the Clerk issuer, which comes from the publishable key.
-- A request without a token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource/mcp"`. A bad token adds `error="invalid_token"`.
+- `GET /.well-known/oauth-protected-resource` returns the resource URL and the Clerk issuer, which comes from the publishable key.
+- A request without a token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource"`. A bad token adds `error="invalid_token"`.
 - Tokens are verified as Clerk OAuth access tokens. OAuth tokens carry no org, so `mcp` reads the user's memberships from the Clerk Backend API and caches them for 30 seconds. A tool sees every connection in every org the user belongs to.
 
 Set `MCP_DEV_ACCEPT_SESSION_TOKENS=true` to also accept Clerk session tokens. Then you can call `mcp` with a token from `clerk` or `sessions.getToken` and skip the OAuth flow. It is for local testing only.
 
 ```sh
-curl -X POST http://localhost:8788/mcp \
+curl -X POST http://localhost:8788 \
   -H "authorization: Bearer $TOKEN" \
   -H "content-type: application/json" \
   -H "accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Once `mcp` has a public https URL, run the Clerk `configure_mcp_server` tool with that URL as `resource_url`. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
+The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Set `MCP_RESOURCE_URL`, the web app's `NEXT_PUBLIC_MCP_URL`, and Clerk's `resource_url` to exactly `https://mcp.ascmcp.dev`. Resource identifiers are preserved as configured: adding a trailing slash changes the OAuth audience. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
 `src/tools.ts` is the tool catalog. Each tool is a row with an Effect Schema input, MCP annotations, and a pure `toRequest` that returns the App Store Connect method, path, query, and body. `src/registry.ts` adds the optional `connection_id` argument to every tool, picks the connection, decrypts the key, calls Apple, and turns results and errors into tool output. To add a tool, add a row. `asc_get` covers any read the rows do not, with a token scoped to that one request.
 
@@ -91,7 +91,7 @@ Each app is its own Vercel project in the `provorovcom` team, connected to this 
 | --- | --- | --- |
 | `asc-mcp-web` | `apps/web` | https://asc-mcp-web.vercel.app |
 | `asc-mcp-api` | `apps/api` | https://asc-mcp-api.vercel.app |
-| `asc-mcp-mcp` | `apps/mcp` | https://asc-mcp-mcp.vercel.app/mcp |
+| `asc-mcp-mcp` | `apps/mcp` | https://mcp.ascmcp.dev |
 
 `apps/api` and `apps/mcp` use Vercel's Hono preset. The preset loads `server.mjs`, which re-exports the tsdown bundle in `dist/main.mjs`. Vercel never compiles the workspace TypeScript itself. `src/index.ts` is the local Node server and is not used on Vercel.
 

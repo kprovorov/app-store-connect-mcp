@@ -26,7 +26,7 @@ A hosted, multi-tenant MCP server for App Store Connect (ASC). A user signs up i
 | Tenancy | Connections belong to a Clerk organization | Orgs are mandatory (`force_organization_selection: true`) |
 | RLS | Server connects with Drizzle, and each request runs in a transaction that does `set local role app_user` and sets `request.jwt.claims` | Without the role switch the policies would be decorative. `app_user` is a role PostgREST never assumes, so the Supabase Data API (`anon`, `authenticated`) has no access to the table at all |
 | Claims shape | API: `{ sub, org_id, org_role }`. MCP: `{ sub, org_ids: [...] }` | Clerk OAuth tokens carry no org. MCP resolves memberships through the Clerk API |
-| MCP URL | One URL, `https://<mcp-host>/mcp` | Clerk issues OAuth tokens whose audience is the registered resource URL. A per-org path would not match |
+| MCP URL | One URL at the domain root, `https://mcp.ascmcp.dev` | Clerk issues OAuth tokens whose audience is the exact registered resource URL, including its trailing-slash choice. A per-org path would not match |
 | MCP auth | Clerk as OAuth 2.1 authorization server, `mcp` as resource server (RFC 9728 metadata). Token audience must equal `MCP_RESOURCE_URL` (`MCP_ENFORCE_AUDIENCE`, on by default) | Native flow for Claude, Cursor, and other MCP clients. The audience check stops tokens Clerk issued for other resources |
 | Connection choice in tools | Optional `connection_id` argument. Defaults when the user can see exactly one connection | Agencies may hold several ASC teams |
 | Tool catalog | Registry table of tool definitions (Effect Schema input, annotations, request builder) plus a read-only `asc_get` escape hatch | One shape for every tool instead of N handlers |
