@@ -1,6 +1,17 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { cn } from "cn";
+import { ChevronDownIcon } from "lucide-react";
 
 import { CopyButton } from "@/components/copy-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { env } from "@/lib/env";
 
@@ -224,7 +235,31 @@ function Snippet({ value }: { value: string }) {
   );
 }
 
+const clientBreakpoints = [
+  { query: "(min-width: 48rem)", count: 6 },
+  { query: "(min-width: 40rem)", count: 4 },
+];
+
+function getPrimaryClientCount() {
+  return clientBreakpoints.find(({ query }) => window.matchMedia(query).matches)?.count ?? 2;
+}
+
+function subscribeToClientBreakpoints(onChange: () => void) {
+  const queries = clientBreakpoints.map(({ query }) => window.matchMedia(query));
+  for (const query of queries) query.addEventListener("change", onChange);
+  return () => {
+    for (const query of queries) query.removeEventListener("change", onChange);
+  };
+}
+
 export function ConnectAgentSection() {
+  const primaryClientCount = useSyncExternalStore(subscribeToClientBreakpoints, getPrimaryClientCount, () => 2);
+  const [selectedClientId, setSelectedClientId] = useState("claude-code");
+  const selectorId = useId();
+  const selectedIndex = clients.findIndex((client) => client.id === selectedClientId);
+  const selectedClient = clients[selectedIndex];
+  const overflowSelected = selectedIndex >= primaryClientCount;
+
   return (
     <section aria-labelledby="connect-agent" className="space-y-5">
       <div>
@@ -242,16 +277,52 @@ export function ConnectAgentSection() {
         <CopyButton value={env.mcpUrl} label="Copy MCP URL" />
       </div>
 
-      <Tabs defaultValue={clients[0]?.id}>
-        <TabsList className="w-full flex-wrap justify-start gap-0.5 group-data-horizontal/tabs:h-auto">
-          {clients.map((client) => (
-            <TabsTrigger key={client.id} value={client.id} className="h-7 flex-none px-2.5">
-              {client.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Tabs value={selectedClientId} onValueChange={setSelectedClientId}>
+        <div className="flex min-w-0 items-center gap-0.5 rounded-lg bg-muted p-[3px]">
+          <TabsList aria-label="Agent clients" className="shrink-0 gap-0.5 bg-transparent p-0">
+            {clients.slice(0, primaryClientCount).map((client) => (
+              <TabsTrigger
+                key={client.id}
+                value={client.id}
+                aria-controls={`${selectorId}-${client.id}`}
+                className="h-7 flex-none px-2.5"
+              >
+                {client.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-transparent px-2.5 text-sm font-medium text-foreground/60 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-ring dark:text-muted-foreground",
+                overflowSelected &&
+                  "bg-background text-foreground shadow-sm dark:border-input dark:bg-input/30 dark:text-foreground",
+              )}
+            >
+              <span className="truncate">{overflowSelected ? selectedClient?.label : "More"}</span>
+              <span className="sr-only">, more clients</span>
+              <ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent key={primaryClientCount} align="end" className="min-w-48">
+              <DropdownMenuRadioGroup value={selectedClientId} onValueChange={setSelectedClientId}>
+                {clients.slice(primaryClientCount).map((client) => (
+                  <DropdownMenuRadioItem key={client.id} value={client.id}>
+                    {client.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         {clients.map((client) => (
-          <TabsContent key={client.id} value={client.id} className="space-y-3 pt-2">
+          <TabsContent
+            key={client.id}
+            id={`${selectorId}-${client.id}`}
+            value={client.id}
+            aria-label={client.label}
+            aria-labelledby={undefined}
+            className="space-y-3 pt-2"
+          >
             <div className="text-muted-foreground">{client.instructions}</div>
             {client.snippet && <Snippet value={client.snippet} />}
           </TabsContent>
