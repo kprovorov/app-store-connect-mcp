@@ -3,7 +3,7 @@ import { Crypto } from "@asc-mcp/crypto";
 import { Database } from "@asc-mcp/db";
 import { Effect, Layer, ManagedRuntime, Redacted } from "effect";
 import { makeApp } from "./app";
-import { clerkAuthenticate } from "./auth";
+import { clerkAuthenticate, resourceAudiences } from "./auth";
 import { McpConfig, clerkIssuer } from "./config";
 
 const failWith = (what: string) => (error: unknown) => {
@@ -31,6 +31,6 @@ export default makeApp({
     secretKey: Redacted.value(config.clerkSecretKey),
     publishableKey: config.clerkPublishableKey,
     acceptSessionTokens: config.acceptSessionTokens,
-    audience: config.enforceAudience ? config.resourceUrl : undefined,
+    audience: config.enforceAudience ? resourceAudiences(config.resourceUrl) : undefined,
   }),
 });
