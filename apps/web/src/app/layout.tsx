@@ -17,14 +17,6 @@ const geistMono = Geist_Mono({
 const title = "App Store Connect MCP";
 const description =
   "A hosted MCP server that lets your AI agent check builds, answer customer reviews, manage TestFlight, and edit App Store Connect listing metadata.";
-const images = [
-  {
-    url: "/social-image.png",
-    width: 1200,
-    height: 630,
-    alt: "App Store Connect MCP. Let your AI agent work in App Store Connect. Builds, customer reviews, TestFlight, and version metadata.",
-  },
-];
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.ascmcp.dev"),
@@ -44,13 +36,11 @@ export const metadata: Metadata = {
     siteName: title,
     title,
     description,
-    images,
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
-    images,
   },
 };
 
