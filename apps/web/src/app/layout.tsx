@@ -14,9 +14,44 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const title = "App Store Connect MCP";
+const description =
+  "A hosted MCP server that lets your AI agent check builds, answer customer reviews, manage TestFlight, and edit App Store Connect listing metadata.";
+const images = [
+  {
+    url: "/social-image.png",
+    width: 1200,
+    height: 630,
+    alt: "App Store Connect MCP. Let your AI agent work in App Store Connect. Builds, customer reviews, TestFlight, and version metadata.",
+  },
+];
+
 export const metadata: Metadata = {
-  title: "App Store Connect MCP",
-  description: "Let your AI agent work with App Store Connect.",
+  metadataBase: new URL("https://app.ascmcp.dev"),
+  applicationName: title,
+  title,
+  description,
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: title,
+    title,
+    description,
+    images,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
