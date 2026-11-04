@@ -37,6 +37,8 @@ jobs:
         run: |
           host=$(printf 'clerk.example.test$' | base64 -w0)
           printf 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_%s\n' "$host" >> "$GITHUB_ENV"
+      - run: pnpm --filter @asc-mcp/mcp check:catalog
+      - run: python3 .audit/evidence/catalog-independent.py
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test

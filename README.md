@@ -10,7 +10,7 @@ Created in [T3 Code](https://t3.codes).
 2. In your agent's remote MCP settings, add `https://mcp.ascmcp.dev` and complete the Clerk OAuth sign-in using the same account. The dashboard includes instructions for Claude Code, Cursor, VS Code, and Claude.ai.
 3. Ask the agent to call `list_connections` and `list_apps`. If several connections are visible, pass the desired `connection_id`.
 
-The tool catalog includes app/build/version reads, reviews, TestFlight, Xcode Cloud, performance metrics, and a read-only `asc_get` for other Apple API paths. Write tools can reply to reviews, update version localization and TestFlight notes, and manage testers. Binary report responses are not supported.
+The server exposes 28 MCP tools. The existing 22 convenience tools remain, with six tools for API discovery, read and write execution, and uploads. All 1,303 operations in Apple's pinned App Store Connect API 4.5.1 specification are available through the read and write executors. Screenshot uploads use Apple's current asset library. Binary reports return bounded base64 resources.
 
 Every organization member can use that organization's stored keys, including write operations allowed by the Apple key. Server operators can decrypt stored keys. Read [SECURITY.md](SECURITY.md) before uploading credentials. For your own deployment, follow the setup below and use your own Clerk and database instances.
 
@@ -96,7 +96,47 @@ curl -X POST http://localhost:8788 \
 
 The server checks that each token's audience is `MCP_RESOURCE_URL`. Clerk only sets that audience after the resource is registered. Set `MCP_RESOURCE_URL`, the web app's `NEXT_PUBLIC_MCP_URL`, and Clerk's `resource_url` to exactly `https://mcp.ascmcp.dev`. Resource identifiers are preserved as configured: adding a trailing slash changes the OAuth audience. Some clients still send it: Claude Code requests `resource=https://mcp.ascmcp.dev/`. So Clerk registers both spellings, and the server accepts a token for either one. Rejected tokens are logged with Clerk's reason, never the token. Locally there is no https URL, so set `MCP_ENFORCE_AUDIENCE=false`. Session tokens have no audience either, so the dev session-token flag needs it off too.
 
-`src/tools.ts` is the tool catalog. Each tool is a row with an Effect Schema input, MCP annotations, and a pure `toRequest` that returns the App Store Connect method, path, query, and body. `src/registry.ts` adds the optional `connection_id` argument to every tool, picks the connection, decrypts the key, calls Apple, and turns results and errors into tool output. To add a tool, add a row. `asc_get` covers any read the rows do not, with a token scoped to that one request.
+`src/tools.ts` retains the existing convenience tools. `src/generated/operations.json` is the internal catalog of Apple operations and their argument schemas. `src/operations.ts` validates catalog requests against those schemas. `src/registry.ts` selects a visible connection, decrypts its key, and calls Apple. Catalog reads use request-scoped tokens. Apple API key roles still determine which operations succeed.
+
+`tools/list` returns all 28 tools in one response. It does not advertise individual API endpoints as tools. `asc_find_operations` searches the internal catalog and returns Apple operation IDs. `asc_describe_operation` accepts an operation ID and returns its arguments schema and the execution tool to use.
+
+Call `asc_read_operation` for GET or `asc_write_operation` for mutations. Supply `operation` with the Apple operation ID, `arguments` matching the described schema, and an optional outer `connection_id`.
+
+Operation arguments keep Apple's parameter and JSON:API field names. For example, call `asc_read_operation` with:
+
+```json
+{"operation":"apps_getInstance","arguments":{"path":{"id":"123"},"query":{"fields[apps]":["name","bundleId"]}},"connection_id":"connection-a"}
+```
+
+Writes pass the original JSON:API request under `arguments.body`. The `accept` argument selects among response media types when Apple offers a choice. Deprecated operations remain callable and discovery marks them as deprecated. The catalog covers the App Store Connect specification. App Store Server API, Transporter, and website-only actions are separate interfaces.
+
+See [the pinned specification](apps/mcp/spec/README.md) for provenance and regeneration commands.
+
+### Upload a screenshot
+
+1. Use `list_app_store_versions` and `list_version_localizations` to find the target localization.
+2. Find `appAssetLibraryRefData_getCollection` with `asc_find_operations` and read its schema. Use its reference data to select the supported image dimensions and `placement_group` for `APP_SCREENSHOT`.
+3. Call `upload_screenshot` with the target and one file source:
+
+```json
+{"app_id":"123","localization_id":"locale-a","placement_group":"IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE","file_name":"home.png","content_base64":"<canonical base64>","wait_seconds":0,"connection_id":"connection-a"}
+```
+
+Inline files support at most 2 MiB decoded. For larger files, replace `content_base64` with `source_url`. Source URLs must use a public HTTPS hostname on port 443, return the file directly without redirects, and contain at most 20 MiB. The server pins a public DNS address, verifies TLS for the original hostname, and forwards no credentials. Local filesystem paths are not accepted by the hosted server.
+
+A successful result has `state: "placed"`, `image_id`, and `placement_id`. If processing is still pending, the result has `state: "processing"`. Call `upload_screenshot` again with the same target and `image_id`, without file fields. Continuation verifies that the image belongs to the app's library and reuses an existing matching placement. Errors retain the stage and image ID after reservation, so an agent can inspect or repair the reservation with the generated operations. A transfer failure requires re-upload through `upload_asset` or a new reservation. `upload_screenshot` continuation handles processing and placement only.
+
+An image still in `AWAITING_UPLOAD` returns a commit-stage error with recovery arguments. Complete any unfinished transfer with `upload_asset`, then call `appAssetLibraryImages_updateInstance` with `uploaded: true`. Only committed images in `UPLOAD_COMPLETE` are reported as processing. Resume `upload_screenshot` after the commit succeeds.
+
+The tool preserves existing screenshots. To set their display order, find `appAssetLibraryPlacementOrderingRequests_createInstance` and use the schema returned by `asc_describe_operation`. Its body identifies the localization and `placementGroup`, then lists placement IDs in `relationships.orderedPlacements.data` in display order. Uploading and placing screenshots does not submit the parent version for review.
+
+`upload_asset` transfers bytes to any existing reservation that returns a supported Apple upload plan. Supply its GET-by-id Apple operation, `resource_id`, `file_name`, and one file source. The tool fetches the reservation, verifies its file size, and uploads all byte ranges. Its result includes MD5 and SHA-256 checksums of the original bytes. It does not commit. Use the generated PATCH operation afterward because checksum fields differ across asset resources. Storage transfers currently support HTTPS PUT operations on `*.blobstore.apple.com` and reject redirects or credential-bearing headers.
+
+### Read binary reports
+
+Gzip and CSV responses return a text metadata block and an embedded resource containing base64 bytes. Metadata includes the MIME type, `totalBytes`, `sha256`, the returned byte count, and `nextOffset` when more data remains. Generated tools accept `response_limit`, up to 1 MiB, and `response_offset`. After the first chunk, pass its `sha256` as `expected_sha256`. The server refuses a changed report instead of combining different versions.
+
+Every chunk request downloads the Apple report again. The server bounds each Apple response to 64 MiB and each MCP result to 3.5 MiB. Larger Apple reports require a deployment with a different artifact delivery path. JSON responses above the MCP result limit return `response_too_large`; reduce Apple's `limit` or requested `fields`. The MCP request limit remains 4 MiB, below the hosted proxy's 4.5 MB limit.
 
 ## Deploy
 

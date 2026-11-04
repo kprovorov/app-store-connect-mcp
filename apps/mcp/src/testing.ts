@@ -28,7 +28,7 @@ export const fakeAuthenticate =
 export const testKeyring = () => Effect.runPromise(parseKeyring(`1:${Buffer.alloc(32, 9).toString("base64")}`));
 
 /** postgres.js connects on the first query, so tests that skip the DB need none. */
-export const testApp = async (options: { readonly caller: Caller; readonly fetch?: typeof globalThis.fetch }) => {
+export const testApp = async (options: { readonly caller: Caller; readonly fetch?: typeof globalThis.fetch; readonly assetFetch?: typeof globalThis.fetch }) => {
   const runtime = ManagedRuntime.make(
     Layer.mergeAll(
       Database.layer(DATABASE_URL),
@@ -42,6 +42,7 @@ export const testApp = async (options: { readonly caller: Caller; readonly fetch
     webOrigin: WEB_ORIGIN,
     runtime,
     authenticate: fakeAuthenticate(options.caller),
+    assetFetch: options.assetFetch,
   });
   return { app, runtime, dispose: () => runtime.dispose() };
 };

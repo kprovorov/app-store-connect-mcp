@@ -1,4 +1,5 @@
 {
   "extends": "@asc-mcp/typescript-config/node.json",
-  "include": ["src", "tsdown.config.ts"]
+  "compilerOptions": { "allowImportingTsExtensions": true },
+  "include": ["src", "scripts", "tsdown.config.ts"]
 }

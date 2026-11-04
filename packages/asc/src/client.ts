@@ -15,6 +15,7 @@ export interface AscRequest {
   readonly path: string;
   readonly query?: Readonly<Record<string, string | number | boolean | ReadonlyArray<string>>>;
   readonly body?: unknown;
+  readonly accept?: string;
   /**
    * Sign a one-off token whose `scope` claim allows only this method, path, and query.
    * Apple rejects the token for any other request, so a bug in our code cannot widen it.
@@ -114,7 +115,26 @@ const scopeFor = (method: AscMethod, url: URL) => {
 const isJson = (contentType: string) => /[/+]json\b/i.test(contentType);
 
 const readBody = async (response: Response): Promise<AscBody> => {
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const limit = 64 * 1024 * 1024;
+  const declared = Number(response.headers.get("content-length"));
+  if (declared > limit) { await response.body?.cancel(); throw new Error("Apple response exceeds 64 MiB"); }
+  const reader = response.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  if (reader) {
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > limit) throw new Error("Apple response exceeds 64 MiB");
+        chunks.push(value);
+      }
+    } finally { await reader.cancel(); }
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (bytes.length === 0) return { kind: "empty" };
   const contentType = response.headers.get("content-type") ?? "application/octet-stream";
   if (isJson(contentType)) return { kind: "json", value: JSON.parse(new TextDecoder().decode(bytes)) };
@@ -160,9 +180,10 @@ export class AscClient extends Context.Service<
             const response = await fetchImpl(url, {
               method: request.method,
               signal,
+              redirect: "error",
               headers: {
                 authorization: `Bearer ${token}`,
-                accept: "application/json",
+                accept: request.accept ?? "application/json",
                 ...(request.body === undefined ? {} : { "content-type": "application/json" }),
               },
               ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
