@@ -24,30 +24,30 @@ describe("tools/list", () => {
   });
   afterAll(() => test.dispose());
 
-  it("lists every tool with an object input schema, and connection_id on each ASC tool", async () => {
-    const tools: Array<{ name: string; inputSchema: Record<string, any>; annotations: { readOnlyHint: boolean } }> = [];
+  it("lists only discover and execute at the root", async () => {
     const { body } = await rpc(test.app, "tools/list");
-    tools.push(...body.result.tools);
+    expect(body.result.tools.map((tool: { name: string }) => tool.name)).toEqual(["discover", "execute"]);
     expect(body.result.nextCursor).toBeUndefined();
-    expect(Buffer.byteLength(JSON.stringify(body.result))).toBeLessThan(64 * 1024);
-    expect(tools).toHaveLength(28);
-    expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
-    for (const alias of ["list_connections", ...ascTools.map((tool) => tool.name)]) expect(tools.some((tool) => tool.name === alias)).toBe(true);
-    for (const tool of tools) {
-      expect(tool.inputSchema.type).toBe("object");
-      if (!["list_connections", "asc_find_operations", "asc_describe_operation"].includes(tool.name)) expect(tool.inputSchema.properties.connection_id).toBeDefined();
-    }
-    const generated = new Map(tools.map((tool) => [tool.name, tool]));
-    expect(generated.get("asc_read_operation")!.annotations.readOnlyHint).toBe(true);
-    expect(generated.get("asc_write_operation")!.annotations.readOnlyHint).toBe(false);
-    expect(ascTools.filter((alias) => !generated.get(alias.name)!.annotations.readOnlyHint).map((alias) => alias.name).sort()).toEqual(["reply_to_review", "update_version_localization", "set_what_to_test", "add_beta_tester", "add_testers_to_group"].sort());
-    for (const alias of ascTools) {
-      const schema = generated.get(alias.name)!.inputSchema;
-      expect(schema.additionalProperties).toBe(false);
-      expect(schema.required ?? []).not.toContain("connection_id");
-    }
     const removed = await rpc(test.app, "tools/call", { name: "asc_apps_getInstance", arguments: { path: { id: "1" } } });
     expect(removed.body.error.code).toBe(-32602);
+  });
+
+  it("advertises the exact convenience schemas in an explicit tools view", async () => {
+    const names = ["list_connections", ...ascTools.map((tool) => tool.name)];
+    const { body } = await rpc(test.app, "tools/list", {}, undefined, `/?tools=${names.join(",")}`);
+    const tools = body.result.tools as Array<{ name: string; inputSchema: Record<string, any>; annotations: { readOnlyHint: boolean } }>;
+    expect(tools).toHaveLength(names.length);
+    expect(new Set(tools.map((tool) => tool.name)).size).toBe(names.length);
+    const definitions = new Map(tools.map((tool) => [tool.name, tool]));
+    for (const alias of ascTools) {
+      const definition = definitions.get(alias.name)!;
+      expect(definition.inputSchema.type).toBe("object");
+      expect(definition.inputSchema.properties.connection_id).toBeDefined();
+      expect(definition.inputSchema.additionalProperties).toBe(false);
+      expect(definition.inputSchema.required ?? []).not.toContain("connection_id");
+      expect(definition.annotations.readOnlyHint).toBe(alias.annotations.readOnlyHint);
+    }
+    expect(ascTools.filter((alias) => !definitions.get(alias.name)!.annotations.readOnlyHint).map((alias) => alias.name).sort()).toEqual(["reply_to_review", "update_version_localization", "set_what_to_test", "add_beta_tester", "add_testers_to_group"].sort());
   });
 });
 

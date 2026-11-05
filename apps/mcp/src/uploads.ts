@@ -19,7 +19,7 @@ const connection = { connection_id: string };
 export const uploadDefinitions: Tool[] = [
   {
     name: "upload_asset",
-    description: "Transfer bytes to an existing Apple asset reservation. Select its GET-by-id Apple operation with asc_find_operations. This tool fetches and verifies Apple's upload operations, then sends raw bytes without API credentials. It does not commit. Commit afterward through the generated PATCH operation, using its resource-specific checksum fields. No arbitrary upload destination is accepted.",
+    description: "Transfer bytes to an existing Apple asset reservation. Select its GET-by-id Apple operation with discover on the compact root. This tool fetches and verifies Apple's upload operations, then sends raw bytes without API credentials. It does not commit. Commit afterward through the generated PATCH operation, using its resource-specific checksum fields. No arbitrary upload destination is accepted.",
     inputSchema: { type: "object", properties: { ...connection, ...sourceProperties, operation: string, resource_id: string }, required: ["operation", "resource_id", "file_name"], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },

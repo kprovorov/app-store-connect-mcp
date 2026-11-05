@@ -1,8 +1,10 @@
 import type { AscRequest } from "@asc-mcp/asc";
 import { Schema } from "effect";
+import type { ToolGroup } from "./tool-groups";
 
 export interface AscTool<I> {
   readonly name: string;
+  readonly groups: readonly ToolGroup[];
   readonly title: string;
   readonly description: string;
   readonly input: Schema.Codec<I, unknown>;
@@ -19,7 +21,7 @@ const define = <I>(tool: AscTool<I>) => tool as unknown as AscTool<unknown>;
 
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
 
-const NEXT_PAGE = "When links.next is present, pass it as path to asc_get for the next page.";
+const NEXT_PAGE = "Follow links.next with asc_get on the compact root, /full, or an explicit ?tools=asc_get view. Group and role preset views exclude this arbitrary-path tool.";
 
 const id = (what: string) => Schema.NonEmptyString.annotate({ description: what });
 const limit = Schema.optionalKey(
@@ -37,6 +39,7 @@ const query = (params: Record<string, string | number | undefined>) =>
 
 export const ascGet = define({
   name: "asc_get",
+  groups: [],
   title: "GET any App Store Connect resource",
   description:
     "Read-only GET against the App Store Connect API for anything the named tools do not cover. " +
@@ -60,6 +63,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   ascGet,
   define({
     name: "list_apps",
+    groups: ["apps"],
     title: "List apps",
     description:
       "Lists the apps this key can see, with name, bundleId, sku, and primaryLocale. The id of each app is the app_id other tools take. " +
@@ -78,6 +82,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "get_app",
+    groups: ["apps"],
     title: "Get an app",
     description: "Returns one app's attributes (name, bundleId, sku, primaryLocale, contentRightsDeclaration, and more).",
     input: Schema.Struct({ app_id: id("App id from list_apps") }),
@@ -86,6 +91,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_builds",
+    groups: ["testflight"],
     title: "List builds",
     description:
       "Lists an app's uploaded builds, newest first, with version (the build number), uploadedDate, processingState, expired, and minOsVersion. " +
@@ -113,6 +119,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_app_store_versions",
+    groups: ["app-store"],
     title: "List App Store versions",
     description:
       "Lists an app's App Store versions with versionString, platform, appVersionState, releaseType, and createdDate. " +
@@ -156,6 +163,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_version_localizations",
+    groups: ["app-store"],
     title: "List version localizations",
     description:
       "Lists the per-locale App Store text of one version: description, keywords, whatsNew, promotionalText, marketingUrl, supportUrl. " +
@@ -174,6 +182,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_review_submissions",
+    groups: ["app-store"],
     title: "List review submissions",
     description:
       "Lists an app's App Review submissions with state (READY_FOR_REVIEW, WAITING_FOR_REVIEW, IN_REVIEW, UNRESOLVED_ISSUES, COMPLETE, ...), " +
@@ -208,6 +217,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_review_submission_items",
+    groups: ["app-store"],
     title: "List review submission items",
     description:
       "Lists what one review submission contains (App Store versions, in-app purchases, custom product pages, and so on) with each item's state.",
@@ -221,6 +231,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_customer_reviews",
+    groups: ["app-store"],
     title: "List customer reviews",
     description:
       "Lists an app's App Store ratings and reviews with rating, title, body, reviewerNickname, territory, and createdDate. Newest first by default. " +
@@ -250,6 +261,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "get_review_summary",
+    groups: ["app-store"],
     title: "Get the review summary",
     description: "Returns Apple's generated summary of an app's customer reviews for one platform, optionally for one territory.",
     input: Schema.Struct({
@@ -266,6 +278,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_beta_groups",
+    groups: ["testflight"],
     title: "List TestFlight groups",
     description:
       "Lists an app's TestFlight beta groups with name, isInternalGroup, publicLinkEnabled, and publicLink. " +
@@ -280,6 +293,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_beta_testers",
+    groups: ["testflight"],
     title: "List TestFlight testers",
     description:
       "Lists TestFlight testers with firstName, lastName, email, inviteType, and state. " +
@@ -304,6 +318,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_build_beta_localizations",
+    groups: ["testflight"],
     title: "List a build's What to Test notes",
     description:
       "Lists one build's TestFlight What to Test text per locale (whatsNew, locale). " +
@@ -318,6 +333,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_beta_feedback_crashes",
+    groups: ["testflight"],
     title: "List TestFlight crash feedback",
     description:
       "Lists crashes TestFlight testers submitted for an app, newest first, with comment, deviceModel, osVersion, and createdDate. " +
@@ -336,6 +352,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "list_ci_build_runs",
+    groups: ["xcode-cloud"],
     title: "List Xcode Cloud build runs",
     description:
       "Lists Xcode Cloud build runs, newest first, with number, executionProgress, completionStatus, startReason, and dates. " +
@@ -365,6 +382,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "get_app_perf_metrics",
+    groups: ["analytics"],
     title: "Get app performance metrics",
     description:
       "Returns Apple's power and performance metrics for an app (launch time, hangs, memory, battery, disk, and more) " +
@@ -385,6 +403,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "reply_to_review",
+    groups: ["app-store"],
     title: "Reply to a customer review",
     description:
       "Publishes a public developer response to a customer review. It replaces any existing response and appears on the App Store after a delay. " +
@@ -408,6 +427,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "update_version_localization",
+    groups: ["app-store"],
     title: "Update App Store text for a version",
     description:
       "Changes one locale's App Store text for one version. Only the fields you pass change. " +
@@ -450,6 +470,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "set_what_to_test",
+    groups: ["testflight"],
     title: "Set a build's What to Test notes",
     description:
       "Sets the TestFlight What to Test text for a build in one locale. To change an existing locale, pass its localization_id " +
@@ -495,6 +516,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "add_beta_tester",
+    groups: ["testflight"],
     title: "Invite a TestFlight tester",
     description:
       "Creates a TestFlight tester by email and adds them to one or more beta groups, which invites them to test. " +
@@ -520,6 +542,7 @@ export const ascTools: ReadonlyArray<AscTool<unknown>> = [
   }),
   define({
     name: "add_testers_to_group",
+    groups: ["testflight"],
     title: "Add testers to a TestFlight group",
     description:
       "Adds existing TestFlight testers to a beta group. Get tester ids from list_beta_testers and the group id from list_beta_groups. " +

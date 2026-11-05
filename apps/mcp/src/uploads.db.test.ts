@@ -85,30 +85,32 @@ afterAll(async () => {
 });
 beforeEach(() => { calls.length = 0; storageFails = false; reservationFails = false; pending = false; wrongApp = false; reused = false; foreignImage = false; resumeState = undefined; quotaExhausted = false; networkFails = false; });
 const call = async (name: string, args: Record<string, unknown>) => {
-  const { body } = await rpc(app.app, "tools/call", { name, arguments: args });
+  const { connection_id, ...input } = args;
+  const { body } = await rpc(app.app, "tools/call", { name: "execute", arguments: { tool: name, arguments: input, ...(connection_id === undefined ? {} : { connection_id }) } });
   return { ...body.result, value: JSON.parse(body.result.content[0].text) };
 };
-const callOperation = (operation: (typeof operations)[number], args: Record<string, unknown>) => call(operation.method === "GET" ? "asc_read_operation" : "asc_write_operation", { operation: operation.operationId, arguments: args });
+const callOperation = (operation: (typeof operations)[number], args: Record<string, unknown>) => call(operation.operationId, args);
 const screenshot = { app_id: "app-a", localization_id: "locale-a", placement_group: "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", file_name: "home.png", content_base64: file.toString("base64") };
 
 describe("generated operations and uploads over HTTP", () => {
-  it("executes operations through first-page fallbacks with the same validation and connection access", async () => {
+  it("executes discovered operations with validation and connection access", async () => {
     const first = await rpc(app.app, "tools/list");
-    expect(first.body.result.tools.map((tool: { name: string }) => tool.name)).toEqual(expect.arrayContaining(["asc_read_operation", "asc_write_operation"]));
-    const read = await call("asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } }, connection_id: connectionId });
+    expect(first.body.result.tools.map((tool: { name: string }) => tool.name)).toEqual(["discover", "execute"]);
+    const read = await call("apps_getInstance", { path: { id: "app-a" }, connection_id: connectionId });
     expect(read.isError).not.toBe(true);
     expect(calls[0]).toMatchObject({ method: "GET", path: "/v1/apps/app-a" });
-    const write = await call("asc_write_operation", { operation: "bundleIds_deleteInstance", arguments: { path: { id: "bundle-a" } } });
+    const write = await call("bundleIds_deleteInstance", { path: { id: "bundle-a" } });
     expect(write.isError).not.toBe(true);
     expect(calls[1]).toMatchObject({ method: "DELETE", path: "/v1/bundleIds/bundle-a" });
     const count = calls.length;
     for (const [name, args] of [
-      ["asc_read_operation", { operation: "bundleIds_deleteInstance", arguments: { path: { id: "bundle-a" } } }],
-      ["asc_write_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } } }],
-      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: ".." } } }],
-      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" } }, connection_id: "another-user-connection" }],
-      ["asc_read_operation", { operation: "apps_getInstance", arguments: { path: { id: "app-a" }, connection_id: connectionId } }],
+      ["unknown_operation", { path: { id: "bundle-a" } }],
+      ["apps_getInstance", { path: { id: ".." } }],
+      ["apps_getInstance", { path: { id: "app-a" }, connection_id: "another-user-connection" }],
+      ["apps_getInstance", { path: { id: "app-a" }, unexpected: true }],
     ] as const) expect((await call(name, args)).isError).toBe(true);
+    const nested = await rpc(app.app, "tools/call", { name: "execute", arguments: { tool: "apps_getInstance", arguments: { path: { id: "app-a" }, connection_id: connectionId } } });
+    expect(nested.body.result.isError).toBe(true);
     expect(calls).toHaveLength(count);
   });
 

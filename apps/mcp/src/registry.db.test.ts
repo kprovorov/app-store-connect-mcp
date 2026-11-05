@@ -12,7 +12,7 @@ import {
 } from "@asc-mcp/db";
 import { Effect } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { WEB_ORIGIN, callerFor, rpc, testApp } from "./testing";
+import { GOOD_TOKEN, WEB_ORIGIN, callerFor, rpc, testApp } from "./testing";
 
 const suffix = Math.random().toString(36).slice(2, 10);
 const user = `user_mcp${suffix}`;
@@ -101,7 +101,8 @@ afterAll(async () => {
 
 const callTool = async (test: typeof oneOrg, name: string, args: Record<string, unknown> = {}) => {
   calls.length = 0;
-  const { body } = await rpc(test.app, "tools/call", { name, arguments: args });
+  const { connection_id, ...input } = args;
+  const { body } = await rpc(test.app, "tools/call", { name: "execute", arguments: { tool: name, arguments: input, ...(connection_id === undefined ? {} : { connection_id }) } });
   const result = body.result as { content: Array<{ text: string }>; isError?: boolean };
   return { isError: result.isError ?? false, value: JSON.parse(result.content[0]!.text) };
 };
@@ -138,6 +139,22 @@ describe("tools/call over HTTP", () => {
     expect(calls[0]!.url.pathname).toBe("/v1/apps");
     expect(calls[0]!.url.searchParams.get("filter[bundleId]")).toBe("com.example.demo");
     expect(jwtPayload(calls[0]!.authorization)).toMatchObject({ aud: "appstoreconnect-v1", iss: "57246542-96fe-1a63-e053-0824d011072a" });
+  });
+
+  it("executes valid reads through compact and direct read-only views", async () => {
+    reply = { status: 200, body: { data: { type: "apps", id: "1", attributes: { name: "Demo" }, links: { self: "noise" } } } };
+    for (const [path, name, args] of [
+      ["/?mode=readonly", "execute", { tool: "apps_getInstance", arguments: { path: { id: "1" } }, connection_id: connectionA }],
+      ["/full?mode=readonly", "asc_apps_getInstance", { path: { id: "1" }, connection_id: connectionA }],
+    ] as const) {
+      calls.length = 0;
+      const { body } = await rpc(oneOrg.app, "tools/call", { name, arguments: args }, GOOD_TOKEN, path);
+      expect(body.result.isError).not.toBe(true);
+      expect(JSON.parse(body.result.content[0].text)).toEqual({ data: { type: "apps", id: "1", attributes: { name: "Demo" } } });
+      expect(calls).toHaveLength(1);
+      expect(calls[0]!.method).toBe("GET");
+      expect(calls[0]!.url.pathname).toBe("/v1/apps/1");
+    }
   });
 
   it("asc_get signs a token scoped to exactly that GET", async () => {

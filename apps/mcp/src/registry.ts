@@ -20,7 +20,8 @@ import type { Services } from "./server";
 import { type AscTool, ascTools } from "./tools";
 import { AssetError } from "./assets";
 import { Ajv } from "ajv";
-import { discoverOperation, discoveryDefinitions, invocationDefinitions, operationRequest, resolveInvocation } from "./operations";
+import { operationRequest, operations } from "./operations";
+import { operationGroups, type ToolGroup } from "./tool-groups";
 import type { Operation } from "./catalog-builder";
 import { uploadAsset, uploadDefinitions, uploadScreenshot } from "./uploads";
 
@@ -249,37 +250,65 @@ const definitionOf = (tool: AscTool<unknown>): Tool => {
   };
 };
 
-export const toolDefinitions: ReadonlyArray<Tool> = [listConnectionsTool, ...ascTools.map(definitionOf), ...discoveryDefinitions, ...invocationDefinitions, ...uploadDefinitions];
+export type Handler = (args: Record<string, unknown>, context: CallContext) => Effect.Effect<CallToolResult, never, Services>;
 
-type Handler = (args: Record<string, unknown>, context: CallContext) => Effect.Effect<CallToolResult, never, Services>;
+export interface ToolEntry {
+  readonly definition: Tool;
+  readonly groups: readonly ToolGroup[];
+  readonly handler: Handler;
+  readonly operation?: Operation;
+  readonly unrestricted?: true;
+}
 
-export const handlers: ReadonlyMap<string, Handler> = new Map<string, Handler>([
-  [
-    listConnectionsTool.name,
-    (_, context) =>
-      listConnections(context.caller.claims).pipe(
-        Effect.map((connections) =>
-          text({
-            connections: connections.map((connection) => connectionSummary(connection, context.caller)),
-            ...(connections.length === 0 ? { hint: `Add an App Store Connect API key at ${context.webOrigin}` } : {}),
-          }),
-        ),
-        Effect.catch((failure) => Effect.succeed(internal(failure))),
-      ),
-  ],
-  ...ascTools.map((tool): [string, Handler] => [tool.name, (args, context) => callAscTool(tool, args, context)]),
-  ...discoveryDefinitions.map((tool): [string, Handler] => [tool.name, (args) => Effect.try({ try: () => text(discoverOperation(tool.name, args)), catch: (error) => new InvalidArguments({ message: String(error) }) }).pipe(Effect.catch((error) => Effect.succeed(errorText({ error: "invalid_arguments", message: error.message }))))]),
-  ...invocationDefinitions.map((tool): [string, Handler] => [tool.name, (args, context) => Effect.gen(function* () {
-    const invocation = yield* Effect.try({ try: () => resolveInvocation(tool.name, args), catch: (error) => new InvalidArguments({ message: String(error) }) });
-    return yield* callOperation(invocation.operation, invocation.arguments, context);
-  }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))]),
-  ...uploadDefinitions.map((tool): [string, Handler] => {
-    const validate = new Ajv({ strict: false }).compile(tool.inputSchema);
-    return [tool.name, (args, context) => Effect.gen(function* () {
+const listConnectionsEntry: ToolEntry = {
+  definition: listConnectionsTool,
+  groups: ["connections"],
+  handler: (args, context) => {
+    if (Object.keys(args).length) return Effect.succeed(errorText({ error: "invalid_arguments", message: "list_connections takes no arguments" }));
+    return listConnections(context.caller.claims).pipe(
+      Effect.map((connections) => text({
+        connections: connections.map((connection) => connectionSummary(connection, context.caller)),
+        ...(connections.length === 0 ? { hint: `Add an App Store Connect API key at ${context.webOrigin}` } : {}),
+      })),
+      Effect.catch((failure) => Effect.succeed(internal(failure))),
+    );
+  },
+};
+
+const uploadEntry = (tool: Tool): ToolEntry => {
+  const validate = new Ajv({ strict: false, ownProperties: true }).compile(tool.inputSchema);
+  return {
+    definition: tool,
+    groups: ["assets"],
+    handler: (args, context) => Effect.gen(function* () {
       if (!validate(args)) return yield* new InvalidArguments({ message: JSON.stringify(validate.errors) });
       return yield* withConnection<unknown, import("@asc-mcp/asc").AscRequestError | AssetError>(args, context, (request) =>
         (tool.name === "upload_asset" ? uploadAsset(args, { request, fetch: context.assetFetch }) : uploadScreenshot(args, { request, fetch: context.assetFetch }))
       ).pipe(Effect.map(text));
-    }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context))))];
-  }),
-]);
+    }).pipe(Effect.catch((failure) => Effect.succeed(failureResult(failure, context)))),
+  };
+};
+
+const entries: ToolEntry[] = [
+  listConnectionsEntry,
+  ...ascTools.map((tool): ToolEntry => ({
+    definition: definitionOf(tool), groups: tool.groups,
+    ...(tool.name === "asc_get" ? { unrestricted: true as const } : {}),
+    handler: (args, context) => callAscTool(tool, args, context),
+  })),
+  ...operations.map((operation): ToolEntry => ({
+    definition: {
+      name: operation.name,
+      description: `${operation.method} ${operation.path}. Apple operation ${operation.operationId}.${operation.deprecated ? " Deprecated by Apple." : ""}`,
+      inputSchema: operation.inputSchema,
+      annotations: { readOnlyHint: operation.method === "GET", destructiveHint: operation.method !== "GET", idempotentHint: ["GET", "DELETE"].includes(operation.method), openWorldHint: true },
+    },
+    groups: operationGroups(operation), operation,
+    handler: (args, context) => callOperation(operation, args, context),
+  })),
+  ...uploadDefinitions.map(uploadEntry),
+];
+entries.sort((a, b) => a.definition.name.localeCompare(b.definition.name, "en"));
+export const registry: ReadonlyMap<string, ToolEntry> = new Map(entries.map((entry) => [entry.definition.name, entry]));
+if (registry.size !== entries.length) throw new Error("Duplicate MCP tool name");
+export const entriesByOperationId: ReadonlyMap<string, ToolEntry> = new Map(entries.flatMap((entry) => entry.operation ? [[entry.operation.operationId, entry] as const] : []));
