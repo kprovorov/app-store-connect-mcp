@@ -1,16 +1,6 @@
 import type { Operation } from "./catalog-builder";
-
-export const groups = ["apps", "app-store", "testflight", "xcode-cloud", "analytics", "signing", "monetization", "game-center", "users", "webhooks", "assets", "distribution", "connections", "other"] as const;
-export type ToolGroup = (typeof groups)[number];
-
-export const presets = {
-  dev: ["apps", "testflight", "xcode-cloud", "signing", "distribution", "connections"],
-  aso: ["apps", "app-store", "assets", "connections"],
-  testflight: ["apps", "testflight", "connections"],
-  analytics: ["apps", "analytics", "connections"],
-  full: groups,
-} as const satisfies Record<string, readonly ToolGroup[]>;
-export type Preset = keyof typeof presets;
+import type { ToolGroup } from "@asc-mcp/contracts/mcp";
+export { groups, presets, type ToolGroup, type Preset } from "@asc-mcp/contracts/mcp";
 
 const resourceFamilies: ReadonlyArray<readonly [RegExp, ToolGroup]> = [
   [/^(analytics|salesReports$|financeReports$|perfPowerMetrics$|performanceOverviews$|metrics$|diagnostic)/, "analytics"],

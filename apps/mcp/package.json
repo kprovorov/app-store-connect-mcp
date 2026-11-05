@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@asc-mcp/asc": "workspace:*",
+    "@asc-mcp/contracts": "workspace:*",
     "@asc-mcp/crypto": "workspace:*",
     "@asc-mcp/db": "workspace:*",
     "@clerk/backend": "^3.26.5",

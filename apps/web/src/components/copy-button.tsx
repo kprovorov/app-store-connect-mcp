@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+export function CopyButton({ value, label = "Copy", disabled = false }: { value: string; label?: string; disabled?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -20,6 +20,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
       type="button"
       variant="ghost"
       size="icon-sm"
+      disabled={disabled}
       aria-label={copied ? "Copied" : label}
       onClick={() =>
         navigator.clipboard.writeText(value).then(

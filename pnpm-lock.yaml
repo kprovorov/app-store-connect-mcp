@@ -309,6 +309,9 @@ importers:
       '@asc-mcp/asc':
         specifier: workspace:*
         version: link:../../packages/asc
+      '@asc-mcp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@asc-mcp/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto

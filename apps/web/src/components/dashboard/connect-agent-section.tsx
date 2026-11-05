@@ -5,6 +5,7 @@ import { cn } from "cn";
 import { ChevronDownIcon } from "lucide-react";
 
 import { CopyButton } from "@/components/copy-button";
+import { McpUrlBuilder } from "@/components/dashboard/mcp-url-builder";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { env } from "@/lib/env";
+import { buildMcpUrl, shellQuote, type McpSelection } from "@/lib/mcp-url";
 
 const serverName = "app-store-connect";
 
@@ -21,12 +23,12 @@ type AgentClient = { id: string; label: string; instructions: ReactNode; snippet
 
 const json = (value: unknown) => JSON.stringify(value, null, 2);
 
-const clients: ReadonlyArray<AgentClient> = [
+const clientsFor = (mcpUrl: string | undefined): ReadonlyArray<AgentClient> => [
   {
     id: "claude-code",
     label: "Claude Code",
     instructions: "Run this in your terminal.",
-    snippet: `claude mcp add --transport http ${serverName} ${env.mcpUrl}`,
+    snippet: mcpUrl && `claude mcp add --transport http ${serverName} ${shellQuote(mcpUrl)}`,
   },
   {
     id: "claude-ai",
@@ -73,7 +75,7 @@ const clients: ReadonlyArray<AgentClient> = [
         desktop app read the same config.
       </>
     ),
-    snippet: `codex mcp add ${serverName} --url ${env.mcpUrl}\ncodex mcp login ${serverName}`,
+    snippet: mcpUrl && `codex mcp add ${serverName} --url ${shellQuote(mcpUrl)}\ncodex mcp login ${serverName}`,
   },
   {
     id: "cursor",
@@ -83,7 +85,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Add this to <Code>~/.cursor/mcp.json</Code> for every project, or <Code>.cursor/mcp.json</Code> for one.
       </>
     ),
-    snippet: json({ mcpServers: { [serverName]: { url: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ mcpServers: { [serverName]: { url: mcpUrl } } }),
   },
   {
     id: "vscode",
@@ -93,7 +95,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Add this to <Code>.vscode/mcp.json</Code> in your workspace.
       </>
     ),
-    snippet: json({ servers: { [serverName]: { type: "http", url: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ servers: { [serverName]: { type: "http", url: mcpUrl } } }),
   },
   {
     id: "copilot-cli",
@@ -103,7 +105,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Run this in your terminal, then run <Code>/mcp auth</Code> in a Copilot session to sign in.
       </>
     ),
-    snippet: `copilot mcp add --transport http ${serverName} ${env.mcpUrl}`,
+    snippet: mcpUrl && `copilot mcp add --transport http ${serverName} ${shellQuote(mcpUrl)}`,
   },
   {
     id: "antigravity",
@@ -114,7 +116,7 @@ const clients: ReadonlyArray<AgentClient> = [
         <Strong>Customizations</Strong>, and click <Strong>Authenticate</Strong>.
       </>
     ),
-    snippet: json({ mcpServers: { [serverName]: { serverUrl: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ mcpServers: { [serverName]: { serverUrl: mcpUrl } } }),
   },
   {
     id: "gemini-cli",
@@ -124,7 +126,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Run this in your terminal, then run <Code>/mcp auth {serverName}</Code> in a Gemini session to sign in.
       </>
     ),
-    snippet: `gemini mcp add --transport http --scope user ${serverName} ${env.mcpUrl}`,
+    snippet: mcpUrl && `gemini mcp add --transport http --scope user ${serverName} ${shellQuote(mcpUrl)}`,
   },
   {
     id: "devin",
@@ -135,7 +137,7 @@ const clients: ReadonlyArray<AgentClient> = [
         <Strong>Needs authentication</Strong>, click <Strong>Authenticate</Strong>.
       </>
     ),
-    snippet: `devin mcp add -s user ${serverName} ${env.mcpUrl}\ndevin mcp login ${serverName}`,
+    snippet: mcpUrl && `devin mcp add -s user ${serverName} ${shellQuote(mcpUrl)}\ndevin mcp login ${serverName}`,
   },
   {
     id: "zed",
@@ -145,7 +147,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Add this to your Zed <Code>settings.json</Code>. Zed opens the sign-in when it connects.
       </>
     ),
-    snippet: json({ context_servers: { [serverName]: { url: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ context_servers: { [serverName]: { url: mcpUrl } } }),
   },
   {
     id: "opencode",
@@ -155,7 +157,7 @@ const clients: ReadonlyArray<AgentClient> = [
         Add this to <Code>opencode.json</Code>, then run <Code>opencode mcp auth {serverName}</Code> to sign in.
       </>
     ),
-    snippet: json({ mcp: { [serverName]: { type: "remote", url: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ mcp: { [serverName]: { type: "remote", url: mcpUrl } } }),
   },
   {
     id: "kiro",
@@ -166,13 +168,13 @@ const clients: ReadonlyArray<AgentClient> = [
         for one. Kiro opens the sign-in when it connects.
       </>
     ),
-    snippet: json({ mcpServers: { [serverName]: { url: env.mcpUrl } } }),
+    snippet: mcpUrl && json({ mcpServers: { [serverName]: { url: mcpUrl } } }),
   },
   {
     id: "amp",
     label: "Amp",
     instructions: "Run this in your terminal. Amp opens the sign-in the next time it starts.",
-    snippet: `amp mcp add ${serverName} ${env.mcpUrl}`,
+    snippet: mcpUrl && `amp mcp add ${serverName} ${shellQuote(mcpUrl)}`,
   },
   {
     id: "goose",
@@ -183,12 +185,12 @@ const clients: ReadonlyArray<AgentClient> = [
         extension. goose opens the sign-in when it connects.
       </>
     ),
-    snippet: [
+    snippet: mcpUrl && [
       "extensions:",
       `  ${serverName}:`,
       `    name: ${serverName}`,
       "    type: streamable_http",
-      `    uri: ${env.mcpUrl}`,
+      `    uri: ${json(mcpUrl)}`,
       "    enabled: true",
       "    timeout: 300",
     ].join("\n"),
@@ -255,6 +257,10 @@ function subscribeToClientBreakpoints(onChange: () => void) {
 export function ConnectAgentSection() {
   const primaryClientCount = useSyncExternalStore(subscribeToClientBreakpoints, getPrimaryClientCount, () => 2);
   const [selectedClientId, setSelectedClientId] = useState("claude-code");
+  const [selection, setSelection] = useState<McpSelection>({ kind: "default" });
+  const [readOnly, setReadOnly] = useState(false);
+  const mcpUrl = buildMcpUrl(env.mcpUrl, selection, readOnly);
+  const clients = clientsFor(mcpUrl.url);
   const selectorId = useId();
   const selectedIndex = clients.findIndex((client) => client.id === selectedClientId);
   const selectedClient = clients[selectedIndex];
@@ -273,9 +279,17 @@ export function ConnectAgentSection() {
 
       <div className="flex items-center gap-2 rounded-lg border py-1.5 pr-1.5 pl-3">
         <span className="shrink-0 text-sm text-muted-foreground">MCP URL</span>
-        <code className="min-w-0 flex-1 truncate font-mono text-sm">{env.mcpUrl}</code>
-        <CopyButton value={env.mcpUrl} label="Copy MCP URL" />
+        <code className="min-w-0 flex-1 break-all font-mono text-sm">{mcpUrl.url ?? "Complete your selection below"}</code>
+        <CopyButton key={mcpUrl.url ?? "invalid"} value={mcpUrl.url ?? ""} disabled={!mcpUrl.url} label="Copy MCP URL" />
       </div>
+
+      <McpUrlBuilder
+        selection={selection}
+        onSelectionChange={setSelection}
+        readOnly={readOnly}
+        onReadOnlyChange={setReadOnly}
+        error={mcpUrl.error}
+      />
 
       <Tabs value={selectedClientId} onValueChange={setSelectedClientId}>
         <div className="flex min-w-0 items-center gap-0.5 rounded-lg bg-muted p-[3px]">
@@ -324,7 +338,7 @@ export function ConnectAgentSection() {
             className="space-y-3 pt-2"
           >
             <div className="text-muted-foreground">{client.instructions}</div>
-            {client.snippet && <Snippet value={client.snippet} />}
+            {client.snippet && <Snippet key={client.snippet} value={client.snippet} />}
           </TabsContent>
         ))}
       </Tabs>
