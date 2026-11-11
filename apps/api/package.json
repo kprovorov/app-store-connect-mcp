@@ -17,7 +17,7 @@
     "@asc-mcp/crypto": "workspace:*",
     "@asc-mcp/db": "workspace:*",
     "@clerk/backend": "^3.26.5",
-    "@hono/node-server": "^2.1.5",
+    "@hono/node-server": "^2.1.6",
     "effect": "catalog:",
     "hono": "^4.13.16"
   },
