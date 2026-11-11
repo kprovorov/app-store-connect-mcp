@@ -174,8 +174,8 @@ catalogs:
       specifier: ^0.45.4
       version: 0.45.4
     effect:
-      specifier: ^4.1.1
-      version: 4.1.1
+      specifier: ^4.1.2
+      version: 4.1.2
     jose:
       specifier: ^6.2.14
       version: 6.2.14
@@ -225,7 +225,7 @@ importers:
         version: 2.1.5(hono@4.13.16)
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
       hono:
         specifier: ^4.13.16
         version: 4.13.16
@@ -332,7 +332,7 @@ importers:
         version: 8.20.0
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
       hono:
         specifier: ^4.13.16
         version: 4.13.16
@@ -378,7 +378,7 @@ importers:
         version: 0.5.1
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
       lucide-react:
         specifier: ^1.66.0
         version: 1.66.0(@types/react@19.3.0)(react@19.3.0)
@@ -439,7 +439,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
       jose:
         specifier: 'catalog:'
         version: 6.2.14
@@ -461,7 +461,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
     devDependencies:
       '@asc-mcp/typescript-config':
         specifier: workspace:*
@@ -474,7 +474,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
     devDependencies:
       '@asc-mcp/typescript-config':
         specifier: workspace:*
@@ -499,7 +499,7 @@ importers:
         version: 0.45.4(postgres@4.0.0)
       effect:
         specifier: 'catalog:'
-        version: 4.1.1
+        version: 4.1.2
       postgres:
         specifier: 'catalog:'
         version: 4.0.0
@@ -3262,8 +3262,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.1.1:
-    resolution: {integrity: sha512-XYu65BrcmNqu5i7PPvP4dqL+R5ma37zIsfuSPjcn78mog+6e5PkilNg7Xo+pBpjXJYlWEIpH4j91tMrfW05CMw==}
+  effect@4.1.2:
+    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   electron-to-chromium@1.5.472:
     resolution: {integrity: sha512-s4+nfT29b0FKpVKoaIxl2pWsoNcn7A/nMPSrxayw4T3BsmPeV2lF9Y06BsAQeMGhCTQ4nYJ5XST7jkqe4ZEqFw==}
@@ -7803,7 +7803,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.1.1: {}
+  effect@4.1.2: {}
 
   electron-to-chromium@1.5.472: {}
 

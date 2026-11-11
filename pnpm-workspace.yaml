@@ -6,7 +6,7 @@ catalog:
   "@types/node": ^26.6.6
   drizzle-kit: ^0.31.11
   drizzle-orm: ^0.45.4
-  effect: ^4.1.1
+  effect: ^4.1.2
   jose: ^6.2.14
   postgres: ^4.0.0
   typescript: ~6.0.3
